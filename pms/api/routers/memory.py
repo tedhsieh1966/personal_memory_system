@@ -63,4 +63,6 @@ async def patch_mtm(ep_id: int, body: MTMPatch) -> dict:
 
 @router.delete("/ltm/{concept_id}", status_code=204)
 async def delete_ltm(concept_id: str) -> None:
-    raise HTTPException(status_code=501, detail="LTM not available until Phase 2")
+    deleted = await asyncio.to_thread(ltm_svc.delete_concept, concept_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="LTM concept not found")

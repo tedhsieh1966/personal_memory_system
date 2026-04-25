@@ -22,6 +22,10 @@ def build_installer():
 
     shutil.copy2(exe_path, DEPLOY_DIR)
 
+    editor_path = os.path.join(ROOT_DIR, DIR_DIST, APP_EDITOR_EXE)
+    if os.path.exists(editor_path):
+        shutil.copy2(editor_path, DEPLOY_DIR)
+
     if os.path.exists(FP_CONFIG):
         shutil.copy2(FP_CONFIG, DEPLOY_DIR)
 

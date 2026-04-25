@@ -1,4 +1,4 @@
-# build.py — PyInstaller build for pms_api.exe
+# build.py — PyInstaller builds for pms_api.exe and pms_editor.exe
 import os
 import shutil
 import platform
@@ -6,17 +6,12 @@ import PyInstaller.__main__
 from app_info import *
 
 
-def build():
-    if platform.system() != "Windows":
-        print("PMS is Windows-only. Build must run on Windows.")
-        return False
+def _icon_arg() -> list[str]:
+    return [f"--icon={FP_ICON}"] if os.path.exists(FP_ICON) else []
 
-    for d in [DIR_DIST, DIR_BUILD]:
-        if os.path.exists(d):
-            shutil.rmtree(d)
 
+def build_api() -> bool:
     print(f"Building {APP_API_EXE}...")
-
     args = [
         FP_API_ENTRY,
         "--onefile",
@@ -52,18 +47,60 @@ def build():
         "--distpath=dist",
         "--workpath=build",
         "--noconfirm",
-    ]
-
-    if os.path.exists(FP_ICON):
-        args.append(f"--icon={FP_ICON}")
-
+    ] + _icon_arg()
     try:
         PyInstaller.__main__.run(args)
-        print(f"Build complete: dist/{APP_API_EXE}")
+        print(f"  -> dist/{APP_API_EXE}")
         return True
     except Exception as e:
-        print(f"Build failed: {e}")
+        print(f"API build failed: {e}")
         return False
+
+
+def build_editor() -> bool:
+    print(f"Building {APP_EDITOR_EXE}...")
+    args = [
+        FP_EDITOR_ENTRY,
+        "--onefile",
+        "--windowed",
+        f"--name={APP_EDITOR}",
+        "--hidden-import=pms.editor.app",
+        "--hidden-import=pms.editor.api_client",
+        "--hidden-import=pms.editor.views",
+        "--hidden-import=pms.editor.views.dashboard",
+        "--hidden-import=pms.editor.views.stm_view",
+        "--hidden-import=pms.editor.views.mtm_view",
+        "--hidden-import=pms.editor.views.ltm_view",
+        "--hidden-import=pms.editor.views.settings_view",
+        "--hidden-import=pms.editor.views.log_view",
+        "--hidden-import=customtkinter",
+        "--hidden-import=httpx",
+        "--collect-all=customtkinter",
+        "--distpath=dist",
+        "--workpath=build",
+        "--noconfirm",
+    ] + _icon_arg()
+    try:
+        PyInstaller.__main__.run(args)
+        print(f"  -> dist/{APP_EDITOR_EXE}")
+        return True
+    except Exception as e:
+        print(f"Editor build failed: {e}")
+        return False
+
+
+def build() -> bool:
+    if platform.system() != "Windows":
+        print("PMS is Windows-only. Build must run on Windows.")
+        return False
+
+    for d in [DIR_DIST, DIR_BUILD]:
+        if os.path.exists(d):
+            shutil.rmtree(d)
+
+    ok_api = build_api()
+    ok_editor = build_editor()
+    return ok_api and ok_editor
 
 
 if __name__ == "__main__":

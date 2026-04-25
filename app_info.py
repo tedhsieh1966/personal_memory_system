@@ -7,7 +7,7 @@ APP         = "pms"
 APP_CAPS    = "PMS"
 BRIEF       = "Personal Memory System"
 DESCRIPTION = "Privacy-first personal memory augmentation layer for Windows"
-VERSION     = "0.3.0"
+VERSION     = "0.5.0"
 AUTHOR      = "Ted Hsieh"
 EMAIL       = "ted1966@gmail.com"
 
@@ -27,6 +27,7 @@ else:
     APP_API_EXE     = APP_API
     APP_EDITOR_EXE  = APP_EDITOR
 
-FP_API_ENTRY  = f"{ROOT_DIR}/run_api.py"
-FP_CONFIG     = f"{ROOT_DIR}/config.yaml"
-FP_ICON       = f"{ROOT_DIR}/src/favicon.ico"   # placeholder – add icon to src/
+FP_API_ENTRY    = f"{ROOT_DIR}/run_api.py"
+FP_EDITOR_ENTRY = f"{ROOT_DIR}/run_editor.py"
+FP_CONFIG       = f"{ROOT_DIR}/config.yaml"
+FP_ICON         = f"{ROOT_DIR}/src/favicon.ico"   # placeholder – add icon to src/
