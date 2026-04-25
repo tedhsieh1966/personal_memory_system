@@ -81,6 +81,14 @@ ai_backend:
 
 Connect to `http://127.0.0.1:8765` using the top bar.
 
+### 5. (Optional) Run the MCP server
+
+```bat
+.venv\Scripts\python.exe run_mcp.py
+```
+
+Exposes `remember`, `recall`, and `memory_status` as MCP tools over stdio. See the [AI / App Integration](#ai--app-integration) section below.
+
 ---
 
 ## Configuration Reference (`config.yaml`)
@@ -196,6 +204,32 @@ Base URL: `http://127.0.0.1:8765`
 
 ---
 
+## AI / App Integration
+
+Any application or AI assistant can call PMS over plain HTTP — no special SDK required.
+
+See **[skill.md](skill.md)** for the full integration guide: operations, request/response shapes, examples, and caller guidance.
+
+### Quick reference
+
+| Goal | Call |
+|---|---|
+| Store a memory | `POST /ingest` with `content` + `source` |
+| Search memories | `POST /retrieve` with `query` |
+| Check service health | `GET /status` |
+
+### MCP server (for AI assistants)
+
+If your AI framework supports MCP, run the included stdio server:
+
+```bat
+.venv\Scripts\python.exe run_mcp.py
+```
+
+Set `PMS_URL` env var to override the default `http://127.0.0.1:8765`.
+
+---
+
 ## Running Tests
 
 ```bat
@@ -253,22 +287,26 @@ PersonalMemory/
 │   │       ├── scheduler.py
 │   │       ├── browser_poller.py
 │   │       └── file_watcher.py
-│   └── editor/
-│       ├── app.py             # CustomTkinter main window
-│       ├── api_client.py      # httpx REST client
-│       └── views/
-│           ├── dashboard.py
-│           ├── stm_view.py
-│           ├── mtm_view.py
-│           ├── ltm_view.py
-│           ├── settings_view.py
-│           └── log_view.py
+│   ├── editor/
+│   │   ├── app.py             # CustomTkinter main window
+│   │   ├── api_client.py      # httpx REST client
+│   │   └── views/
+│   │       ├── dashboard.py
+│   │       ├── stm_view.py
+│   │       ├── mtm_view.py
+│   │       ├── ltm_view.py
+│   │       ├── settings_view.py
+│   │       └── log_view.py
+│   └── mcp/
+│       └── server.py          # MCP stdio server (remember/recall/memory_status)
 ├── tests/
+├── skill.md                   # AI/app integration descriptor
 ├── config.yaml
 ├── requirements.txt
 ├── pyproject.toml
 ├── run_api.py
 ├── run_editor.py
+├── run_mcp.py
 ├── build.py
 ├── build_installer.py
 ├── build.bat
