@@ -43,7 +43,7 @@ Most AI assistants forget everything the moment you close the chat. PMS gives an
 
 ## Quick Start
 
-**Prerequisites:** Python 3.11+, [Ollama](https://ollama.com) (optional but recommended)
+**Prerequisites:** Windows 10/11 · Python 3.11+ · 8 GB RAM (16 GB recommended) · [Ollama](https://ollama.com) optional but recommended for AI consolidation · NVIDIA GPU with 6 GB+ VRAM for fast local inference
 
 ```bat
 git clone <repo>

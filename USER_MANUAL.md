@@ -55,6 +55,54 @@ Results from both are merged, de-duplicated, and re-ranked by a combination of r
 
 ## 2. Prerequisites
 
+### Hardware
+
+The hardware requirements depend almost entirely on whether you run Ollama for local AI. The API, editor, and search engine are lightweight — it's the LLM that sets the bar.
+
+#### Without Ollama (keyword search only)
+
+PMS still ingests, stores, and retrieves memories via BM25 keyword search. This mode is very lightweight:
+
+| Component | Minimum |
+|---|---|
+| CPU | Any modern dual-core (2015+) |
+| RAM | 2 GB free |
+| Disk | 500 MB (database + exe) |
+| GPU | Not needed |
+
+LTM vector search and AI consolidation are simply skipped. Results are marked `partial: true`.
+
+#### With Ollama — CPU only (no GPU)
+
+Ollama can run `qwen2.5:7b` on CPU using quantised GGUF models. It works, but consolidation is slow — expect 1–3 minutes per batch of 20 events.
+
+| Component | Minimum | Recommended |
+|---|---|---|
+| CPU | 4-core x86-64 (AVX2 support) | 8-core modern CPU |
+| RAM | 8 GB | 16 GB |
+| Disk | 8 GB free (models + database) | SSD strongly preferred |
+| GPU | Not needed | — |
+
+> The two Ollama models together require about 5 GB on disk: `qwen2.5:7b` (~4.7 GB) and `nomic-embed-text` (~274 MB).
+
+#### With Ollama — GPU (recommended for full speed)
+
+A GPU lets Ollama run inference in seconds rather than minutes, making consolidation fast enough to be nearly invisible.
+
+| Component | Minimum | Recommended |
+|---|---|---|
+| CPU | Any modern quad-core | — |
+| RAM | 8 GB | 16 GB |
+| VRAM | 6 GB (NVIDIA) | 8 GB+ |
+| Disk | 8 GB free | SSD |
+| GPU | NVIDIA GTX 1060 6GB | RTX 3060 12 GB or better |
+
+AMD GPUs work with Ollama via ROCm on Linux but have limited Windows support. On Windows, NVIDIA is the reliable choice.
+
+> If your GPU has less VRAM than the model needs, Ollama automatically offloads layers to CPU RAM. A 4 GB GPU can still accelerate `qwen2.5:7b` partially — it won't be as fast as full GPU inference but is faster than CPU-only.
+
+### Software
+
 | Requirement | Why it's needed |
 |---|---|
 | **Windows 10/11** | File watcher and browser poller use Windows-specific paths |
