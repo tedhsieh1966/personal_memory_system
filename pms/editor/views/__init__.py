@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import threading
+from tkinter import messagebox
 from typing import Any, Callable
 
 import customtkinter as ctk
@@ -10,7 +11,8 @@ import customtkinter as ctk
 class ViewBase(ctk.CTkFrame):
     """Base frame for all editor views with thread-safe async helper."""
 
-    def __init__(self, parent: Any, client: Any, **kwargs: Any):
+    def __init__(self, parent: Any, client: Any, **kwargs: Any) -> None:
+        kwargs.setdefault("fg_color", "transparent")
         super().__init__(parent, **kwargs)
         self.client = client
 
@@ -26,39 +28,25 @@ class ViewBase(ctk.CTkFrame):
         threading.Thread(target=_target, daemon=True).start()
 
     def refresh(self) -> None:
-        """Called when this view becomes visible. Override to reload data."""
+        """Called when this panel becomes visible. Override to reload data."""
+
+    def _add_info_row(
+        self, parent: ctk.CTkFrame, row: int, label: str, attr: str, pad_bottom: int = 4
+    ) -> ctk.CTkLabel:
+        """LKM-style key: value row. Returns the value label (stored as self.<attr>)."""
+        ctk.CTkLabel(
+            parent, text=f"{label}:", anchor="e", width=140, text_color="#aaa",
+            font=("Arial", 12),
+        ).grid(row=row, column=0, sticky="e", padx=(12, 4), pady=(0, pad_bottom))
+        lbl = ctk.CTkLabel(parent, text="—", anchor="w", font=("Arial", 12))
+        lbl.grid(row=row, column=1, sticky="w", padx=(4, 12), pady=(0, pad_bottom))
+        setattr(self, attr, lbl)
+        return lbl
 
 
-def confirm_dialog(title: str, message: str) -> bool:
-    """Modal yes/no confirmation using a CTkToplevel. Returns True if confirmed."""
-    result: list[bool] = [False]
-
-    dlg = ctk.CTkToplevel()
-    dlg.title(title)
-    dlg.geometry("360x140")
-    dlg.resizable(False, False)
-    dlg.grab_set()
-    dlg.focus_set()
-
-    ctk.CTkLabel(dlg, text=message, wraplength=320, justify="center").pack(
-        padx=20, pady=(20, 10)
-    )
-
-    btn_row = ctk.CTkFrame(dlg, fg_color="transparent")
-    btn_row.pack()
-
-    def _ok() -> None:
-        result[0] = True
-        dlg.destroy()
-
-    ctk.CTkButton(btn_row, text="Confirm", command=_ok, width=110).pack(side="left", padx=6)
-    ctk.CTkButton(
-        btn_row, text="Cancel", command=dlg.destroy,
-        fg_color="gray50", hover_color="gray40", width=110,
-    ).pack(side="left", padx=6)
-
-    dlg.wait_window()
-    return result[0]
+def confirm(title: str, message: str) -> bool:
+    """Simple yes/no confirmation via tkinter messagebox."""
+    return messagebox.askyesno(title, message)
 
 
 def fmt_time(ts: str | None) -> str:
@@ -66,7 +54,7 @@ def fmt_time(ts: str | None) -> str:
     if not ts:
         return "—"
     try:
-        from datetime import datetime, timezone
+        from datetime import datetime
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         return dt.astimezone().strftime("%m-%d %H:%M")
     except Exception:

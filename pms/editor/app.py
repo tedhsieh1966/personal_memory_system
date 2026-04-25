@@ -1,5 +1,7 @@
-"""PMS Editor — main CustomTkinter application window."""
+"""PMS Editor — main CustomTkinter application window (LKM-style layout)."""
 from __future__ import annotations
+
+import threading
 
 import customtkinter as ctk
 
@@ -15,7 +17,7 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 _NAV = [
-    ("Dashboard", "dashboard"),
+    ("Dashboard",   "dashboard"),
     ("Short-Term",  "stm"),
     ("Mid-Term",    "mtm"),
     ("Long-Term",   "ltm"),
@@ -23,174 +25,167 @@ _NAV = [
     ("Log",         "log"),
 ]
 
-_CHECK_MS = 5_000   # connection check interval
+_CHECK_MS = 10_000
 
 
 class PMSEditorApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Personal Memory System")
-        self.geometry("1280x740")
+        self.title("PMS Editor — Personal Memory System")
+        self.geometry("1280x800")
         self.minsize(900, 600)
 
         self.client = PMSClient()
-        self._views: dict[str, ctk.CTkFrame] = {}
-        self._active: str = ""
+        self._active: str | None = None
         self._nav_btns: dict[str, ctk.CTkButton] = {}
 
-        self._build_layout()
-        self._build_sidebar()
-        self._build_views()
-        self._build_statusbar()
-
-        self._show_view("dashboard")
-        self._check_connection()
+        self._build()
+        self._switch_panel("dashboard")
+        self.after(500, self._connect)
 
     # ── Layout ────────────────────────────────────────────────────────────────
 
-    def _build_layout(self) -> None:
-        self.grid_rowconfigure(0, weight=1)
+    def _build(self) -> None:
         self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(1, weight=1)
 
-        self._sidebar = ctk.CTkFrame(self, width=180, corner_radius=0)
-        self._sidebar.grid(row=0, column=0, sticky="nsew")
-        self._sidebar.grid_propagate(False)
+        self._build_topbar()
+        self._build_sidebar()
+        self._build_panels()
 
-        self._content = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        self._content.grid(row=0, column=1, sticky="nsew")
-        self._content.grid_rowconfigure(0, weight=1)
-        self._content.grid_columnconfigure(0, weight=1)
+    def _build_topbar(self) -> None:
+        bar = ctk.CTkFrame(self, height=52, corner_radius=0)
+        bar.grid(row=0, column=0, columnspan=2, sticky="ew")
+        bar.grid_columnconfigure(1, weight=1)
+        bar.grid_propagate(False)
 
-        self._statusbar = ctk.CTkFrame(self, height=28, corner_radius=0,
-                                       fg_color="gray15")
-        self._statusbar.grid(row=1, column=0, columnspan=2, sticky="ew")
+        ctk.CTkLabel(
+            bar, text="PMS Editor", font=("Arial", 15, "bold")
+        ).grid(row=0, column=0, padx=(16, 24), pady=12)
+
+        ctk.CTkLabel(bar, text="Server URL:", text_color="#aaa").grid(
+            row=0, column=1, sticky="e", padx=(0, 4)
+        )
+        self._url_entry = ctk.CTkEntry(
+            bar, width=260, placeholder_text="http://127.0.0.1:8765"
+        )
+        self._url_entry.insert(0, self.client.base_url)
+        self._url_entry.grid(row=0, column=2, padx=(0, 8), pady=10)
+        self._url_entry.bind("<Return>", lambda _: self._connect())
+
+        self._btn_connect = ctk.CTkButton(
+            bar, text="Connect", width=80, height=32, command=self._connect
+        )
+        self._btn_connect.grid(row=0, column=3, padx=(0, 12))
+
+        self._status_lbl = ctk.CTkLabel(
+            bar, text="●  Not connected", text_color="#888", font=("Arial", 12)
+        )
+        self._status_lbl.grid(row=0, column=4, padx=(0, 20))
 
     def _build_sidebar(self) -> None:
-        ctk.CTkLabel(
-            self._sidebar, text="PMS",
-            font=ctk.CTkFont(size=22, weight="bold"),
-        ).pack(pady=(20, 4))
-        ctk.CTkLabel(
-            self._sidebar, text="Personal Memory",
-            font=ctk.CTkFont(size=11), text_color="gray60",
-        ).pack(pady=(0, 20))
+        sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
+        sidebar.grid(row=1, column=0, sticky="nsew")
+        sidebar.grid_propagate(False)
+        sidebar.grid_columnconfigure(0, weight=1)
 
-        for label, key in _NAV:
+        for i, (label, key) in enumerate(_NAV):
             btn = ctk.CTkButton(
-                self._sidebar, text=label,
-                corner_radius=6, anchor="w",
-                fg_color="transparent", hover_color="gray25",
-                command=lambda k=key: self._show_view(k),
+                sidebar, text=label, anchor="w",
+                fg_color="transparent", hover_color="#2a2d2e",
+                font=("Arial", 13), height=40, corner_radius=6,
+                command=lambda k=key: self._switch_panel(k),
             )
-            btn.pack(fill="x", padx=10, pady=3)
+            btn.grid(
+                row=i, column=0, sticky="ew",
+                padx=8, pady=(8 if i == 0 else 2, 2),
+            )
             self._nav_btns[key] = btn
 
-        # Connection section at bottom
-        self._sidebar.pack_propagate(False)
-        spacer = ctk.CTkFrame(self._sidebar, fg_color="transparent")
-        spacer.pack(fill="both", expand=True)
+    def _build_panels(self) -> None:
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.grid(row=1, column=1, sticky="nsew")
+        container.grid_columnconfigure(0, weight=1)
+        container.grid_rowconfigure(0, weight=1)
 
-        ctk.CTkFrame(self._sidebar, height=1, fg_color="gray35").pack(fill="x", padx=10)
-        self._host_entry = ctk.CTkEntry(
-            self._sidebar, placeholder_text="127.0.0.1:8765", width=160
-        )
-        self._host_entry.insert(0, "127.0.0.1:8765")
-        self._host_entry.pack(padx=10, pady=(8, 4))
-        ctk.CTkButton(
-            self._sidebar, text="Connect", width=160,
-            command=self._reconnect,
-        ).pack(padx=10, pady=(0, 16))
-
-    def _build_views(self) -> None:
-        self._views = {
-            "dashboard": DashboardView(self._content, self.client),
-            "stm":       STMView(self._content, self.client),
-            "mtm":       MTMView(self._content, self.client),
-            "ltm":       LTMView(self._content, self.client),
-            "settings":  SettingsView(self._content, self.client),
-            "log":       LogView(self._content, self.client),
+        self._panels: dict[str, ctk.CTkFrame] = {
+            "dashboard": DashboardView(container, self.client),
+            "stm":       STMView(container, self.client),
+            "mtm":       MTMView(container, self.client),
+            "ltm":       LTMView(container, self.client),
+            "settings":  SettingsView(container, self.client),
+            "log":       LogView(container, self.client),
         }
-        for v in self._views.values():
-            v.grid(row=0, column=0, sticky="nsew")
-
-    def _build_statusbar(self) -> None:
-        self._status_lbl = ctk.CTkLabel(
-            self._statusbar, text="", font=ctk.CTkFont(size=11),
-            text_color="gray60",
-        )
-        self._status_lbl.pack(side="left", padx=12)
-
-        self._conn_lbl = ctk.CTkLabel(
-            self._statusbar, text="● Checking…",
-            font=ctk.CTkFont(size=11), text_color="gray50",
-        )
-        self._conn_lbl.pack(side="right", padx=12)
+        for panel in self._panels.values():
+            panel.grid(row=0, column=0, sticky="nsew")
+            panel.grid_remove()
 
     # ── Navigation ────────────────────────────────────────────────────────────
 
-    def _show_view(self, key: str) -> None:
-        if key not in self._views:
+    def _switch_panel(self, key: str) -> None:
+        if self._active == key:
             return
-        if self._active and self._active in self._nav_btns:
-            self._nav_btns[self._active].configure(fg_color="transparent")
+        for k, panel in self._panels.items():
+            if k == key:
+                panel.grid()
+            else:
+                panel.grid_remove()
+
+        for k, btn in self._nav_btns.items():
+            btn.configure(fg_color="#1f538d" if k == key else "transparent")
+
         self._active = key
-        self._nav_btns[key].configure(fg_color="gray25")
-        self._views[key].tkraise()
-        self._views[key].refresh()
+        self._panels[key].refresh()
 
     # ── Connection ────────────────────────────────────────────────────────────
 
-    def _reconnect(self) -> None:
-        addr = self._host_entry.get().strip() or "127.0.0.1:8765"
-        if not addr.startswith("http"):
-            addr = "http://" + addr
-        self.client.close()
-        self.client = PMSClient(addr)
-        for view in self._views.values():
-            view.client = self.client
-        self._check_connection()
+    def _connect(self) -> None:
+        url = self._url_entry.get().strip().rstrip("/")
+        if url:
+            self.client = PMSClient(url if url.startswith("http") else "http://" + url)
+            for panel in self._panels.values():
+                panel.client = self.client
 
-    def _check_connection(self) -> None:
-        import threading
+        self._btn_connect.configure(state="disabled", text="Connecting…")
+        self._status_lbl.configure(text="●  Connecting…", text_color="#f0a500")
+        threading.Thread(target=self._do_connect, daemon=True).start()
 
-        def _ping() -> bool:
-            return self.client.is_alive()
+    def _do_connect(self) -> None:
+        alive = self.client.is_alive()
+        if alive:
+            self.after(0, lambda: (
+                self._status_lbl.configure(
+                    text=f"●  Connected  {self.client.base_url}",
+                    text_color="#2ecc71",
+                ),
+                self._btn_connect.configure(state="normal", text="Connect"),
+            ))
+            self.after(0, lambda: self._panels[self._active].refresh() if self._active else None)
+        else:
+            self.after(0, lambda: (
+                self._status_lbl.configure(
+                    text="●  Cannot connect — is the API running?",
+                    text_color="#e74c3c",
+                ),
+                self._btn_connect.configure(state="normal", text="Connect"),
+            ))
+        self.after(_CHECK_MS, self._connect_silent)
 
-        def _on_result(alive: bool) -> None:
-            if alive:
-                self._conn_lbl.configure(
-                    text=f"● Connected  {self.client.base_url}",
-                    text_color="#4CAF50",
-                )
-                self._hide_banner()
-            else:
-                self._conn_lbl.configure(
-                    text="● API not reachable", text_color="#FF6B6B"
-                )
-                self._show_banner()
+    def _connect_silent(self) -> None:
+        """Periodic background health check (no UI changes on reconnect)."""
+        def _check() -> None:
+            alive = self.client.is_alive()
+            color = "#2ecc71" if alive else "#e74c3c"
+            text = (
+                f"●  Connected  {self.client.base_url}" if alive
+                else "●  Cannot connect — is the API running?"
+            )
+            self.after(0, lambda: self._status_lbl.configure(
+                text=text, text_color=color
+            ))
+            self.after(_CHECK_MS, self._connect_silent)
 
-        def _target() -> None:
-            result = _ping()
-            self.after(0, lambda: _on_result(result))
-
-        threading.Thread(target=_target, daemon=True).start()
-        self.after(_CHECK_MS, self._check_connection)
-
-    def _show_banner(self) -> None:
-        if hasattr(self, "_banner") and self._banner.winfo_exists():
-            return
-        self._banner = ctk.CTkFrame(self._content, fg_color="#5C2020", corner_radius=0)
-        self._banner.grid(row=1, column=0, sticky="ew")
-        ctk.CTkLabel(
-            self._banner,
-            text="PMS API is not reachable. Check that the service is running, then click Connect.",
-            text_color="#FFAAAA",
-        ).pack(pady=6)
-        self._content.grid_rowconfigure(1, minsize=36)
-
-    def _hide_banner(self) -> None:
-        if hasattr(self, "_banner") and self._banner.winfo_exists():
-            self._banner.destroy()
+        threading.Thread(target=_check, daemon=True).start()
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
