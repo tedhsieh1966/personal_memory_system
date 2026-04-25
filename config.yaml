@@ -1,0 +1,45 @@
+api:
+  host: "127.0.0.1"
+  port: 8765
+
+storage:
+  db_path: "pms.db"
+  ltm_path: "pms_ltm"
+
+memory:
+  stm_ttl_hours: 12
+  stm_capacity: 500
+  mtm_ttl_days: 21
+  mtm_decay_lambda: 0.05
+  mtm_score_threshold: 1.0
+  ltm_merge_cosine: 0.95
+
+consolidation:
+  stm_trigger_hours: 6
+  stm_trigger_pct: 0.80
+  mtm_schedule: "0 2 * * 0"
+
+embedding:
+  provider: "ollama"
+  model: "nomic-embed-text"
+  ollama_url: "http://localhost:11434"
+  dim: 768
+
+ai_backend:
+  provider: "local"
+  local:
+    base_url: "http://localhost:11434/v1"
+    api_key: "ollama"
+    model: "qwen2.5:7b"
+  cloud:
+    base_url: "https://api.openai.com/v1"
+    api_key: ""
+    model: "gpt-4o-mini"
+
+ingestion:
+  browser_db_paths:
+    chrome: "%LOCALAPPDATA%/Google/Chrome/User Data/Default/History"
+    firefox: "%APPDATA%/Mozilla/Firefox/Profiles"
+  browser_poll_interval_min: 30
+  watched_dirs: []
+  watched_extensions: [".txt", ".md", ".py", ".docx", ".pdf"]
