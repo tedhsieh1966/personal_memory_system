@@ -30,7 +30,7 @@ Most AI assistants forget everything the moment you close the chat. PMS gives an
 - **Browser ingestion** — Automatically indexes Chrome and Firefox history in the background
 - **File watching** — Monitors directories for new/changed documents and ingests them
 - **Desktop editor** — Full CustomTkinter GUI to browse, search, pin, delete, and export memories
-- **REST API + Skill** — Any app or AI can call `POST /ingest` and `POST /retrieve` — see [skill.md](skill.md)
+- **REST API + Skill** — Any app or AI can call `POST /ingest` and `POST /retrieve` — see [docs/skill.md](docs/skill.md)
 - **Windows service** — Runs silently at startup via NSSM; zero maintenance
 
 ---
@@ -87,7 +87,7 @@ results = httpx.post("http://127.0.0.1:8765/retrieve", json={
 }).json()
 ```
 
-See [skill.md](skill.md) for the full integration guide including request/response shapes, examples, and caller guidance for AI assistants.
+See [docs/skill.md](docs/skill.md) for the full integration guide including request/response shapes, examples, and caller guidance for AI assistants.
 
 ---
 
@@ -95,8 +95,8 @@ See [skill.md](skill.md) for the full integration guide including request/respon
 
 | Document | Contents |
 |---|---|
-| [USER_MANUAL.md](USER_MANUAL.md) | Full setup guide, editor walkthrough, configuration explained, troubleshooting |
-| [skill.md](skill.md) | API integration descriptor for apps and AI assistants |
+| [docs/USER_MANUAL.md](docs/USER_MANUAL.md) | Full setup guide, editor walkthrough, configuration explained, troubleshooting |
+| [docs/skill.md](docs/skill.md) | API integration descriptor for apps and AI assistants |
 | [config.yaml](config.yaml) | Annotated default configuration |
 
 ---
@@ -110,8 +110,8 @@ PersonalMemory/
 │   ├── editor/       # CustomTkinter desktop GUI
 │   └── mcp/          # MCP stdio server
 ├── tests/            # 110 tests, no Ollama required
-├── skill.md          # Integration descriptor
-├── USER_MANUAL.md    # Full user manual
+├── docs/skill.md          # Integration descriptor
+├── docs/USER_MANUAL.md    # Full user manual
 ├── run_api.py        # Start the API server
 ├── run_editor.py     # Launch the desktop editor
 ├── run_mcp.py        # Start the MCP server
