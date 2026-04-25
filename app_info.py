@@ -29,5 +29,6 @@ else:
 
 FP_API_ENTRY    = f"{ROOT_DIR}/run_api.py"
 FP_EDITOR_ENTRY = f"{ROOT_DIR}/run_editor.py"
+FP_MCP_ENTRY    = f"{ROOT_DIR}/run_mcp.py"
 FP_CONFIG       = f"{ROOT_DIR}/config.yaml"
 FP_ICON         = f"{ROOT_DIR}/src/favicon.ico"   # placeholder – add icon to src/
