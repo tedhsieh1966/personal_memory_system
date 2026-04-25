@@ -1,6 +1,6 @@
 # Personal Memory System (PMS)
 
-**Version 0.4.0** — Privacy-first personal memory augmentation layer for Windows
+**Version 0.6.0** — Privacy-first personal memory augmentation layer for Windows
 
 PMS runs as a local Windows service that captures what you read and do, consolidates it with AI, and surfaces relevant context when you ask. All data stays on your machine.
 
@@ -9,8 +9,8 @@ PMS runs as a local Windows service that captures what you read and do, consolid
 ## Architecture
 
 ```
-STM (Short-Term Memory)   — SQLite ring buffer, ~200 events, 24h TTL
-MTM (Medium-Term Memory)  — SQLite with Ebbinghaus decay, pinnable episodes
+STM (Short-Term Memory)   — SQLite ring buffer, ~500 events, 12h TTL
+MTM (Mid-Term Memory)     — SQLite with Ebbinghaus decay, pinnable episodes
 LTM (Long-Term Memory)    — LanceDB vector store, permanent concept distillation
 ```
 
@@ -32,11 +32,11 @@ Events flow upward automatically:
 | `qwen2.5:7b` model | `ollama pull qwen2.5:7b` |
 | `nomic-embed-text` model | `ollama pull nomic-embed-text` |
 
-> PMS can run without Ollama — retrieval falls back to BM25-only, and consolidation is skipped until AI becomes available.
+> PMS degrades gracefully without Ollama — retrieval falls back to BM25-only and consolidation is skipped until AI becomes available.
 
 ---
 
-## Installation
+## Installation (development)
 
 ### 1. Clone and set up the virtual environment
 
@@ -58,20 +58,28 @@ ingestion:
     firefox: "C:/Users/YourName/AppData/Roaming/Mozilla/Firefox/Profiles"
   watched_dirs:
     - "C:/Users/YourName/Documents"
-  watched_extensions: [".txt", ".md", ".py"]
+
+ai_backend:
+  provider: "local"
+  local:
+    base_url: "http://localhost:11434/v1"
+    api_key: "ollama"
+    model: "qwen2.5:7b"
 ```
 
 ### 3. Run the API server
 
 ```bat
-.venv\Scripts\python.exe -m uvicorn pms.api.main:app --host 127.0.0.1 --port 8765
-```
-
-Or use the shortcut:
-
-```bat
 .venv\Scripts\python.exe run_api.py
 ```
+
+### 4. Launch the editor
+
+```bat
+.venv\Scripts\python.exe run_editor.py
+```
+
+Connect to `http://127.0.0.1:8765` using the top bar.
 
 ---
 
@@ -91,46 +99,40 @@ Or use the shortcut:
 | `db_path` | `pms.db` | SQLite database file |
 | `ltm_path` | `pms_ltm` | LanceDB directory |
 
-### `stm`
+### `memory`
 
 | Key | Default | Description |
 |---|---|---|
-| `capacity` | `200` | Ring buffer size (oldest evicted when full) |
-| `ttl_hours` | `24` | Hard expiry in hours |
-
-### `mtm`
-
-| Key | Default | Description |
-|---|---|---|
-| `decay_lambda` | `0.05` | Ebbinghaus forgetting rate λ |
-| `decay_threshold` | `1.0` | Score below this → episode deleted |
-| `soft_ttl_days` | `90` | Episodes not accessed for this many days are candidates for deletion |
+| `stm_capacity` | `500` | Ring buffer size (oldest evicted when full) |
+| `stm_ttl_hours` | `12` | Hard expiry in hours |
+| `mtm_decay_lambda` | `0.05` | Ebbinghaus forgetting rate λ |
+| `mtm_score_threshold` | `1.0` | Score below this → episode deleted |
+| `mtm_ttl_days` | `21` | Episodes not accessed for this many days are deletion candidates |
 
 ### `consolidation`
 
 | Key | Default | Description |
 |---|---|---|
 | `stm_trigger_hours` | `6` | STM→MTM consolidation interval |
-| `mtm_schedule` | `0 2 * * *` | MTM→LTM cron schedule (default: 2am daily) |
-| `min_mtm_score` | `7.0` | Minimum MTM score to qualify for LTM |
-| `min_access_count` | `2` | Minimum access count to qualify for LTM |
+| `mtm_schedule` | `0 2 * * 0` | MTM→LTM cron schedule |
 
 ### `embedding`
 
 | Key | Default | Description |
 |---|---|---|
-| `backend` | `ollama` | `ollama` or `sentence_transformers` |
+| `provider` | `ollama` | `ollama` or `sentence_transformers` |
 | `model` | `nomic-embed-text` | Model name |
 | `dim` | `768` | Vector dimension |
 | `ollama_url` | `http://localhost:11434` | Ollama base URL |
 
-### `ai`
+### `ai_backend`
 
 | Key | Default | Description |
 |---|---|---|
-| `base_url` | `http://localhost:11434/v1` | OpenAI-compatible endpoint |
-| `api_key` | `ollama` | API key (ignored by Ollama) |
-| `model` | `qwen2.5:7b` | Chat model |
+| `provider` | `local` | `local` or `cloud` |
+| `local.base_url` | `http://localhost:11434/v1` | OpenAI-compatible endpoint |
+| `local.api_key` | `ollama` | API key |
+| `local.model` | `qwen2.5:7b` | Chat model |
 
 ### `ingestion`
 
@@ -156,148 +158,126 @@ Base URL: `http://127.0.0.1:8765`
 
 **Request body:**
 ```json
-{
-  "source": "manual",
-  "content": "Reviewed the API design document",
-  "keywords": "API design review",
-  "metadata": {"project": "PMS"}
-}
+{ "source": "manual", "content": "Reviewed the API design document" }
 ```
 
 ### Retrieve
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/retrieve?q=<query>&limit=10` | Hybrid BM25 + vector search |
+| `POST` | `/retrieve` | Hybrid BM25 + vector search |
 
-**Response:**
+**Request body:**
 ```json
-{
-  "results": [
-    {
-      "id": "stm:42",
-      "source": "manual",
-      "content": "Reviewed the API design document",
-      "score": 0.87,
-      "tier": "stm",
-      "created_at": 1714000000.0
-    }
-  ],
-  "partial": false
-}
+{ "query": "API design", "top_k": 10 }
 ```
 
-`partial: true` means LTM was not searched (embedder unavailable or timed out).
-
-### STM
+### Memory
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/stm` | List STM events |
-| `GET` | `/stm/{id}` | Get one event |
-| `DELETE` | `/stm/{id}` | Delete one event |
-
-### MTM
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/mtm` | List episodes (optional `?min_score=`) |
-| `GET` | `/mtm/{id}` | Get one episode |
-| `PATCH` | `/mtm/{id}` | Update episode (score, tags, pinned) |
-| `DELETE` | `/mtm/{id}` | Delete one episode |
-
-### LTM
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/ltm` | List concepts |
-| `DELETE` | `/ltm/{concept_id}` | Delete a concept |
+| `GET` | `/memory/stm` | List STM events |
+| `DELETE` | `/memory/stm/{id}` | Delete an STM event |
+| `GET` | `/memory/mtm` | List MTM episodes |
+| `PATCH` | `/memory/mtm/{id}` | Update episode (`pinned`, `importance_score`) |
+| `DELETE` | `/memory/mtm/{id}` | Delete an episode |
+| `GET` | `/memory/ltm` | List LTM concepts |
+| `DELETE` | `/memory/ltm/{id}` | Delete a concept |
 
 ### Admin
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/status` | Service status, last consolidation times |
+| `GET` | `/status` | Counts + last consolidation times |
 | `POST` | `/consolidate/stm` | Manually trigger STM→MTM |
 | `POST` | `/consolidate/mtm` | Manually trigger MTM→LTM |
 | `GET` | `/config` | Show current configuration |
-| `PUT` | `/config` | Update configuration at runtime |
+| `POST` | `/config` | Update configuration at runtime |
 
 ---
 
 ## Running Tests
 
 ```bat
-.venv\Scripts\python.exe -m pytest tests/ -v
+.venv\Scripts\python.exe -m pytest tests/ -q
 ```
 
-All tests use an isolated temp database and config; Ollama is not required.
+All tests use an isolated temp database; Ollama is not required.
 
 ---
 
 ## Building a Distributable
 
-Requires PyInstaller:
-
 ```bat
-.venv\Scripts\pip install pyinstaller
 build.bat
 ```
 
-This produces:
+Produces:
 - `dist/pms_api.exe` — standalone API server
-- `dist/deploy/` — deployment package with NSSM service installer
+- `dist/pms_editor.exe` — desktop editor
+- `dist/deploy/` — deployment package with NSSM service scripts, editor, and instructions
 
 ### Installing as a Windows Service
 
 1. Download [NSSM](https://nssm.cc/download) and add it to `PATH`
-2. Copy `dist/deploy/` to your target machine
+2. Copy `dist/deploy/` to the target machine
 3. Edit `config.yaml` in the deploy folder
 4. Run `install_service.bat` as Administrator
+5. Launch `pms_editor.exe` to manage memories
 
 The service starts automatically on Windows boot and listens on `http://127.0.0.1:8765`.
 
-To uninstall: run `uninstall_service.bat` as Administrator.
-
 ---
 
-## Development
-
-### Project structure
+## Project Structure
 
 ```
 PersonalMemory/
 ├── pms/
-│   └── api/
-│       ├── main.py            # FastAPI app + lifespan
-│       ├── config.py          # YAML config loader
-│       ├── db.py              # SQLite singleton
-│       ├── models.py          # Pydantic schemas
-│       ├── routers/
-│       │   ├── ingest.py
-│       │   ├── retrieve.py
-│       │   ├── memory.py
-│       │   └── admin.py
-│       └── services/
-│           ├── stm.py
-│           ├── mtm.py
-│           ├── ltm.py
-│           ├── embedder.py
-│           ├── consolidator.py
-│           ├── scheduler.py
-│           ├── browser_poller.py
-│           └── file_watcher.py
+│   ├── api/
+│   │   ├── main.py            # FastAPI app + lifespan
+│   │   ├── config.py          # YAML config loader
+│   │   ├── db.py              # SQLite singleton
+│   │   ├── models.py          # Pydantic schemas
+│   │   ├── routers/
+│   │   │   ├── ingest.py
+│   │   │   ├── retrieve.py
+│   │   │   ├── memory.py
+│   │   │   └── admin.py
+│   │   └── services/
+│   │       ├── stm.py
+│   │       ├── mtm.py
+│   │       ├── ltm.py
+│   │       ├── embedder.py
+│   │       ├── consolidator.py
+│   │       ├── scheduler.py
+│   │       ├── browser_poller.py
+│   │       └── file_watcher.py
+│   └── editor/
+│       ├── app.py             # CustomTkinter main window
+│       ├── api_client.py      # httpx REST client
+│       └── views/
+│           ├── dashboard.py
+│           ├── stm_view.py
+│           ├── mtm_view.py
+│           ├── ltm_view.py
+│           ├── settings_view.py
+│           └── log_view.py
 ├── tests/
 ├── config.yaml
 ├── requirements.txt
+├── pyproject.toml
 ├── run_api.py
+├── run_editor.py
 ├── build.py
 ├── build_installer.py
 ├── build.bat
 └── app_info.py
 ```
 
-### Environment variable override
+---
+
+## Environment Variable Override
 
 Set `PMS_CONFIG` to point to an alternate `config.yaml`:
 
@@ -310,6 +290,5 @@ set PMS_CONFIG=C:\custom\pms_config.yaml
 
 ## License
 
-Private / personal use.
-
+Private / personal use.  
 **Author:** Ted Hsieh &lt;ted1966@gmail.com&gt;

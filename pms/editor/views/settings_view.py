@@ -8,34 +8,34 @@ from . import ViewBase
 
 _FIELDS = [
     ("API Connection", None, "section", {}),
-    ("Host",          ("api", "host"),                "entry",  {}),
-    ("Port",          ("api", "port"),                "entry",  {}),
+    ("Host",          ("api", "host"),                                      "entry", {}),
+    ("Port",          ("api", "port"),                                      "entry", {}),
 
-    ("AI Backend", None, "section", {}),
-    ("Endpoint URL",  ("ai", "base_url"),             "entry",  {}),
-    ("API Key",       ("ai", "api_key"),              "entry",  {"show": "*"}),
-    ("Chat Model",    ("ai", "model"),                "entry",  {}),
+    ("AI Backend (local)", None, "section", {}),
+    ("Endpoint URL",  ("ai_backend", "local", "base_url"),                  "entry", {}),
+    ("API Key",       ("ai_backend", "local", "api_key"),                   "entry", {"show": "*"}),
+    ("Chat Model",    ("ai_backend", "local", "model"),                     "entry", {}),
 
     ("Embedding", None, "section", {}),
-    ("Backend",       ("embedding", "backend"),       "combo",  {"values": ["ollama", "sentence_transformers"]}),
-    ("Embed Model",   ("embedding", "model"),         "entry",  {}),
-    ("Ollama URL",    ("embedding", "ollama_url"),    "entry",  {}),
+    ("Provider",      ("embedding", "provider"),                            "combo", {"values": ["ollama", "sentence_transformers"]}),
+    ("Embed Model",   ("embedding", "model"),                               "entry", {}),
+    ("Ollama URL",    ("embedding", "ollama_url"),                          "entry", {}),
 
     ("Memory", None, "section", {}),
-    ("STM Capacity",  ("stm", "capacity"),            "entry",  {}),
-    ("STM TTL (hrs)", ("stm", "ttl_hours"),           "entry",  {}),
-    ("MTM Decay λ",   ("mtm", "decay_lambda"),        "entry",  {}),
-    ("MTM TTL (days)",("mtm", "soft_ttl_days"),       "entry",  {}),
+    ("STM Capacity",  ("memory", "stm_capacity"),                           "entry", {}),
+    ("STM TTL (hrs)", ("memory", "stm_ttl_hours"),                          "entry", {}),
+    ("MTM Decay λ",   ("memory", "mtm_decay_lambda"),                       "entry", {}),
+    ("MTM TTL (days)",("memory", "mtm_ttl_days"),                           "entry", {}),
 
     ("Consolidation", None, "section", {}),
-    ("STM Trigger (hrs)",   ("consolidation", "stm_trigger_hours"), "entry", {}),
-    ("MTM Schedule (cron)", ("consolidation", "mtm_schedule"),      "entry", {}),
+    ("STM Trigger (hrs)",   ("consolidation", "stm_trigger_hours"),         "entry", {}),
+    ("MTM Schedule (cron)", ("consolidation", "mtm_schedule"),              "entry", {}),
 
     ("Ingestion", None, "section", {}),
-    ("Chrome DB Path",       ("ingestion", "browser_db_paths", "chrome"),  "entry", {}),
-    ("Firefox Profiles",     ("ingestion", "browser_db_paths", "firefox"), "entry", {}),
-    ("Poll Interval (min)",  ("ingestion", "browser_poll_interval_min"),   "entry", {}),
-    ("Watched Dirs (;-sep)", ("ingestion", "watched_dirs"),                "entry", {}),
+    ("Chrome DB Path",       ("ingestion", "browser_db_paths", "chrome"),   "entry", {}),
+    ("Firefox Profiles",     ("ingestion", "browser_db_paths", "firefox"),  "entry", {}),
+    ("Poll Interval (min)",  ("ingestion", "browser_poll_interval_min"),    "entry", {}),
+    ("Watched Dirs (;-sep)", ("ingestion", "watched_dirs"),                 "entry", {}),
 ]
 
 
@@ -151,10 +151,10 @@ class SettingsView(ViewBase):
         for path, var in self._widgets.items():
             raw = var.get().strip()
             try:
-                if path[-1] in ("port", "capacity", "ttl_hours", "soft_ttl_days",
+                if path[-1] in ("port", "stm_capacity", "stm_ttl_hours", "mtm_ttl_days",
                                  "stm_trigger_hours", "browser_poll_interval_min"):
                     raw = int(raw) if raw else 0
-                elif path[-1] in ("decay_lambda", "min_mtm_score", "ltm_merge_cosine"):
+                elif path[-1] in ("mtm_decay_lambda", "min_mtm_score", "ltm_merge_cosine"):
                     raw = float(raw) if raw else 0.0
             except ValueError:
                 pass

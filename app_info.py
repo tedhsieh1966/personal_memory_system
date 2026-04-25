@@ -7,7 +7,7 @@ APP         = "pms"
 APP_CAPS    = "PMS"
 BRIEF       = "Personal Memory System"
 DESCRIPTION = "Privacy-first personal memory augmentation layer for Windows"
-VERSION     = "0.5.0"
+VERSION     = "0.6.0"
 AUTHOR      = "Ted Hsieh"
 EMAIL       = "ted1966@gmail.com"
 
