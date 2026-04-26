@@ -1,5 +1,5 @@
 [project]
-name = "personalmemory"
+name = "personal_memory_system"
 version = "0.6.0"
 description = "Privacy-first personal memory augmentation layer for Windows"
 requires-python = ">=3.11"

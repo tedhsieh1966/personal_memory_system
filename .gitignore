@@ -26,6 +26,9 @@ pms_ltm/
 .vscode/
 *.iml
 
+# Claude Code local settings
+.claude/
+
 # OS
 Thumbs.db
 desktop.ini
