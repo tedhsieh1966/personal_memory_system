@@ -89,6 +89,26 @@ def build_editor() -> bool:
         return False
 
 
+def build_manager() -> bool:
+    print(f"Building {APP_MANAGER_EXE}...")
+    args = [
+        FP_MANAGER_ENTRY,
+        "--onefile",
+        "--console",
+        f"--name={APP_MANAGER}",
+        "--distpath=dist",
+        "--workpath=build",
+        "--noconfirm",
+    ] + _icon_arg()
+    try:
+        PyInstaller.__main__.run(args)
+        print(f"  -> dist/{APP_MANAGER_EXE}")
+        return True
+    except Exception as e:
+        print(f"Manager build failed: {e}")
+        return False
+
+
 def build() -> bool:
     if platform.system() != "Windows":
         print("PMS is Windows-only. Build must run on Windows.")
@@ -96,11 +116,15 @@ def build() -> bool:
 
     for d in [DIR_DIST, DIR_BUILD]:
         if os.path.exists(d):
-            shutil.rmtree(d)
+            try:
+                shutil.rmtree(d)
+            except PermissionError:
+                print(f"Warning: could not clean {d} (in use) — reusing existing directory.")
 
-    ok_api = build_api()
-    ok_editor = build_editor()
-    return ok_api and ok_editor
+    ok_api     = build_api()
+    ok_editor  = build_editor()
+    ok_manager = build_manager()
+    return ok_api and ok_editor and ok_manager
 
 
 if __name__ == "__main__":

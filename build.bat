@@ -25,14 +25,13 @@ echo.
 echo [3/3] Done.
 echo.
 echo Output:
-echo   dist\pms_api.exe        -- standalone API server
-echo   dist\pms_editor.exe     -- desktop editor
-echo   dist\deploy\            -- deployment package (copy to target machine)
+echo   dist\pms_api.exe        -- API server (bundled inside installer)
+echo   dist\pms_editor.exe     -- desktop editor (bundled inside installer)
+echo   dist\pms_manager.exe    -- CLI service manager (bundled inside installer)
+echo   dist\pms_installer.exe  -- run this on the target machine to install PMS
 echo.
 echo To deploy:
-echo   1. Copy dist\deploy\ to the target machine
-echo   2. Edit config.yaml
-echo   3. Run install_service.bat as Administrator
-echo   4. Launch pms_editor.exe to manage memories
+echo   1. Copy dist\pms_installer.exe to the target machine
+echo   2. Run pms_installer.exe as Administrator
 echo.
 endlocal
