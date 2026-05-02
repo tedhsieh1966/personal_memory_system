@@ -1,41 +1,43 @@
-"""Settings view — edit config via POST /config."""
+"""Settings view — edit config via POST /config, plus language selection."""
 from __future__ import annotations
 
 import tkinter as tk
+from typing import Callable
 import customtkinter as ctk
 
 from . import ViewBase
 
+# (display_key, config_path, widget_type, extra, translation_key)
 _FIELDS = [
-    ("API Connection", None, "section", {}),
-    ("Host",          ("api", "host"),                                      "entry", {}),
-    ("Port",          ("api", "port"),                                      "entry", {}),
+    ("settings.section_api",      None,                                               "section", {},                                                    "settings.section_api"),
+    ("settings.field_host",       ("api", "host"),                                    "entry",   {},                                                    "settings.field_host"),
+    ("settings.field_port",       ("api", "port"),                                    "entry",   {},                                                    "settings.field_port"),
 
-    ("AI Backend (local)", None, "section", {}),
-    ("Endpoint URL",  ("ai_backend", "local", "base_url"),                  "entry", {}),
-    ("API Key",       ("ai_backend", "local", "api_key"),                   "entry", {"show": "*"}),
-    ("Chat Model",    ("ai_backend", "local", "model"),                     "entry", {}),
+    ("settings.section_ai",       None,                                               "section", {},                                                    "settings.section_ai"),
+    ("settings.field_endpoint_url",("ai_backend", "local", "base_url"),              "entry",   {},                                                    "settings.field_endpoint_url"),
+    ("settings.field_api_key",    ("ai_backend", "local", "api_key"),                "entry",   {"show": "*"},                                         "settings.field_api_key"),
+    ("settings.field_chat_model", ("ai_backend", "local", "model"),                  "entry",   {},                                                    "settings.field_chat_model"),
 
-    ("Embedding", None, "section", {}),
-    ("Provider",      ("embedding", "provider"),                            "combo", {"values": ["ollama", "sentence_transformers"]}),
-    ("Embed Model",   ("embedding", "model"),                               "entry", {}),
-    ("Ollama URL",    ("embedding", "ollama_url"),                          "entry", {}),
+    ("settings.section_embedding",None,                                               "section", {},                                                    "settings.section_embedding"),
+    ("settings.field_provider",   ("embedding", "provider"),                         "combo",   {"values": ["ollama", "sentence_transformers"]},       "settings.field_provider"),
+    ("settings.field_embed_model",("embedding", "model"),                            "entry",   {},                                                    "settings.field_embed_model"),
+    ("settings.field_ollama_url", ("embedding", "ollama_url"),                       "entry",   {},                                                    "settings.field_ollama_url"),
 
-    ("Memory", None, "section", {}),
-    ("STM Capacity",  ("memory", "stm_capacity"),                           "entry", {}),
-    ("STM TTL (hrs)", ("memory", "stm_ttl_hours"),                          "entry", {}),
-    ("MTM Decay λ",   ("memory", "mtm_decay_lambda"),                       "entry", {}),
-    ("MTM TTL (days)",("memory", "mtm_ttl_days"),                           "entry", {}),
+    ("settings.section_memory",   None,                                               "section", {},                                                    "settings.section_memory"),
+    ("settings.field_stm_capacity",("memory", "stm_capacity"),                       "entry",   {},                                                    "settings.field_stm_capacity"),
+    ("settings.field_stm_ttl_hrs",("memory", "stm_ttl_hours"),                       "entry",   {},                                                    "settings.field_stm_ttl_hrs"),
+    ("settings.field_mtm_decay",  ("memory", "mtm_decay_lambda"),                    "entry",   {},                                                    "settings.field_mtm_decay"),
+    ("settings.field_mtm_ttl_days",("memory", "mtm_ttl_days"),                       "entry",   {},                                                    "settings.field_mtm_ttl_days"),
 
-    ("Consolidation", None, "section", {}),
-    ("STM Trigger (hrs)",   ("consolidation", "stm_trigger_hours"),         "entry", {}),
-    ("MTM Schedule (cron)", ("consolidation", "mtm_schedule"),              "entry", {}),
+    ("settings.section_consolidation",None,                                           "section", {},                                                    "settings.section_consolidation"),
+    ("settings.field_stm_trigger",("consolidation", "stm_trigger_hours"),            "entry",   {},                                                    "settings.field_stm_trigger"),
+    ("settings.field_mtm_schedule",("consolidation", "mtm_schedule"),                "entry",   {},                                                    "settings.field_mtm_schedule"),
 
-    ("Ingestion", None, "section", {}),
-    ("Chrome DB Path",       ("ingestion", "browser_db_paths", "chrome"),   "entry", {}),
-    ("Firefox Profiles",     ("ingestion", "browser_db_paths", "firefox"),  "entry", {}),
-    ("Poll Interval (min)",  ("ingestion", "browser_poll_interval_min"),    "entry", {}),
-    ("Watched Dirs (;-sep)", ("ingestion", "watched_dirs"),                 "entry", {}),
+    ("settings.section_ingestion",None,                                               "section", {},                                                    "settings.section_ingestion"),
+    ("settings.field_chrome_db",  ("ingestion", "browser_db_paths", "chrome"),       "entry",   {},                                                    "settings.field_chrome_db"),
+    ("settings.field_firefox",    ("ingestion", "browser_db_paths", "firefox"),      "entry",   {},                                                    "settings.field_firefox"),
+    ("settings.field_poll_interval",("ingestion", "browser_poll_interval_min"),      "entry",   {},                                                    "settings.field_poll_interval"),
+    ("settings.field_watched_dirs",("ingestion", "watched_dirs"),                    "entry",   {},                                                    "settings.field_watched_dirs"),
 ]
 
 
@@ -54,9 +56,10 @@ def _set_nested(d: dict, keys: tuple, value) -> None:
 
 
 class SettingsView(ViewBase):
-    def __init__(self, parent, client, **kwargs):
+    def __init__(self, parent, client, on_language_change: Callable[[str], None] | None = None, **kwargs):
         super().__init__(parent, client, **kwargs)
         self._widgets: dict[tuple, tk.Variable] = {}
+        self._on_language_change = on_language_change
         self._build()
 
     def _build(self) -> None:
@@ -65,14 +68,14 @@ class SettingsView(ViewBase):
 
         hdr = ctk.CTkFrame(self, fg_color="transparent")
         hdr.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 8))
-        ctk.CTkLabel(hdr, text="Settings", font=("Arial", 16, "bold")).pack(side="left")
+        ctk.CTkLabel(hdr, text=self.tr("settings.title"), font=("Arial", 16, "bold")).pack(side="left")
         ctk.CTkButton(
-            hdr, text="Save Settings", width=120, height=30,
+            hdr, text=self.tr("settings.save"), width=120, height=30,
             fg_color="#1a7a3c", hover_color="#145e2e",
             command=self._save,
         ).pack(side="right")
         ctk.CTkButton(
-            hdr, text="Refresh", width=80, height=30, command=self.refresh
+            hdr, text=self.tr("common.refresh"), width=80, height=30, command=self.refresh
         ).pack(side="right", padx=4)
 
         scroll = ctk.CTkScrollableFrame(self)
@@ -93,7 +96,41 @@ class SettingsView(ViewBase):
         self._widgets.clear()
 
         row = 0
-        for label, path, wtype, extra in _FIELDS:
+
+        # ── Appearance section (language picker) ──────────────────────────
+        ctk.CTkLabel(
+            self._form, text=self.tr("settings.section_appearance"),
+            font=("Arial", 13, "bold"), text_color="#5B9BD5",
+        ).grid(row=row, column=0, columnspan=2, sticky="w", padx=4, pady=(14, 2))
+        row += 1
+
+        ctk.CTkLabel(
+            self._form, text=f"{self.tr('settings.language')}:",
+            width=160, anchor="e", text_color="#aaa", font=("Arial", 12),
+        ).grid(row=row, column=0, sticky="e", padx=(4, 8), pady=5)
+
+        from pms.editor.i18n import get_translator
+        _tmp_tr = get_translator()
+        available_langs = _tmp_tr.get_languages()
+        current_lang = self.tr.__self__.current_language if hasattr(self.tr, "__self__") else available_langs[0]
+        self._lang_var = tk.StringVar(value=current_lang)
+        lang_combo = ctk.CTkComboBox(
+            self._form, variable=self._lang_var,
+            values=available_langs, width=360, font=("Arial", 13),
+            command=self._on_lang_selected,
+        )
+        lang_combo.grid(row=row, column=1, sticky="ew", padx=(0, 4), pady=5)
+        row += 1
+
+        self._restart_lbl = ctk.CTkLabel(
+            self._form, text="", text_color="#f0a500", font=("Arial", 12), anchor="w",
+        )
+        self._restart_lbl.grid(row=row, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 4))
+        row += 1
+
+        # ── Server config fields ──────────────────────────────────────────
+        for _, path, wtype, extra, t_key in _FIELDS:
+            label = self.tr(t_key)
             if wtype == "section":
                 ctk.CTkLabel(
                     self._form, text=label,
@@ -135,13 +172,20 @@ class SettingsView(ViewBase):
                 self._widgets[path] = var
             row += 1
 
+    def _on_lang_selected(self, language: str) -> None:
+        self._restart_lbl.configure(text=self.tr("settings.restart_note"))
+        if self._on_language_change:
+            self._on_language_change(language)
+
     def refresh(self) -> None:
-        self._status_lbl.configure(text="Loading…", text_color="#aaa")
+        self._status_lbl.configure(text=self.tr("common.loading"), text_color="#aaa")
         self._run_async(self.client.get_config, self._on_config)
 
     def _on_config(self, cfg: dict | None, err: Exception | None) -> None:
         if err:
-            self._status_lbl.configure(text=f"Load error: {err}", text_color="#e74c3c")
+            self._status_lbl.configure(
+                text=f"{self.tr('settings.load_error')}: {err}", text_color="#e74c3c"
+            )
             return
         self._status_lbl.configure(text="")
         self._populate_form(cfg or {})
@@ -162,11 +206,13 @@ class SettingsView(ViewBase):
                 raw = [p.strip() for p in raw.split(";") if p.strip()]
             _set_nested(updates, path, raw)
 
-        self._status_lbl.configure(text="Saving…", text_color="#f0a500")
+        self._status_lbl.configure(text=self.tr("settings.saving"), text_color="#f0a500")
         self._run_async(lambda: self.client.update_config(updates), self._on_saved)
 
     def _on_saved(self, _: object, err: Exception | None) -> None:
         if err:
-            self._status_lbl.configure(text=f"Save failed: {err}", text_color="#e74c3c")
+            self._status_lbl.configure(
+                text=f"{self.tr('settings.save_failed')}: {err}", text_color="#e74c3c"
+            )
         else:
-            self._status_lbl.configure(text="Settings saved.", text_color="#2ecc71")
+            self._status_lbl.configure(text=self.tr("settings.saved"), text_color="#2ecc71")

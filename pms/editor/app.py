@@ -6,6 +6,8 @@ import threading
 import customtkinter as ctk
 
 from .api_client import PMSClient
+from .i18n import get_translator
+from .prefs import get_language, set_language
 from .views.dashboard import DashboardView
 from .views.ltm_view import LTMView
 from .views.log_view import LogView
@@ -16,28 +18,32 @@ from .views.stm_view import STMView
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-_NAV = [
-    ("Dashboard",   "dashboard"),
-    ("Short-Term",  "stm"),
-    ("Mid-Term",    "mtm"),
-    ("Long-Term",   "ltm"),
-    ("Settings",    "settings"),
-    ("Log",         "log"),
-]
-
 _CHECK_MS = 10_000
 
 
 class PMSEditorApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("PMS Editor — Personal Memory System")
+
+        self.translator = get_translator(get_language())
+        self.tr = self.translator.translate
+
+        self.title(self.tr("app.window_title"))
         self.geometry("1280x800")
         self.minsize(900, 600)
 
         self.client = PMSClient()
         self._active: str | None = None
         self._nav_btns: dict[str, ctk.CTkButton] = {}
+
+        self._nav_keys = [
+            ("dashboard", "nav.dashboard"),
+            ("stm",       "nav.stm"),
+            ("mtm",       "nav.mtm"),
+            ("ltm",       "nav.ltm"),
+            ("settings",  "nav.settings"),
+            ("log",       "nav.log"),
+        ]
 
         self._build()
         self._switch_panel("dashboard")
@@ -60,10 +66,10 @@ class PMSEditorApp(ctk.CTk):
         bar.grid_propagate(False)
 
         ctk.CTkLabel(
-            bar, text="PMS Editor", font=("Arial", 15, "bold")
+            bar, text=self.tr("app.title"), font=("Arial", 15, "bold")
         ).grid(row=0, column=0, padx=(16, 24), pady=12)
 
-        ctk.CTkLabel(bar, text="Server URL:", text_color="#aaa").grid(
+        ctk.CTkLabel(bar, text=self.tr("topbar.server_url"), text_color="#aaa").grid(
             row=0, column=1, sticky="e", padx=(0, 4)
         )
         self._url_entry = ctk.CTkEntry(
@@ -74,12 +80,14 @@ class PMSEditorApp(ctk.CTk):
         self._url_entry.bind("<Return>", lambda _: self._connect())
 
         self._btn_connect = ctk.CTkButton(
-            bar, text="Connect", width=80, height=32, command=self._connect
+            bar, text=self.tr("topbar.connect"), width=80, height=32,
+            command=self._connect,
         )
         self._btn_connect.grid(row=0, column=3, padx=(0, 12))
 
         self._status_lbl = ctk.CTkLabel(
-            bar, text="●  Not connected", text_color="#888", font=("Arial", 12)
+            bar, text=self.tr("status.not_connected"),
+            text_color="#888", font=("Arial", 12),
         )
         self._status_lbl.grid(row=0, column=4, padx=(0, 20))
 
@@ -89,9 +97,9 @@ class PMSEditorApp(ctk.CTk):
         sidebar.grid_propagate(False)
         sidebar.grid_columnconfigure(0, weight=1)
 
-        for i, (label, key) in enumerate(_NAV):
+        for i, (key, t_key) in enumerate(self._nav_keys):
             btn = ctk.CTkButton(
-                sidebar, text=label, anchor="w",
+                sidebar, text=self.tr(t_key), anchor="w",
                 fg_color="transparent", hover_color="#2a2d2e",
                 font=("Arial", 13), height=40, corner_radius=6,
                 command=lambda k=key: self._switch_panel(k),
@@ -108,13 +116,15 @@ class PMSEditorApp(ctk.CTk):
         container.grid_columnconfigure(0, weight=1)
         container.grid_rowconfigure(0, weight=1)
 
+        tr = self.translator
         self._panels: dict[str, ctk.CTkFrame] = {
-            "dashboard": DashboardView(container, self.client),
-            "stm":       STMView(container, self.client),
-            "mtm":       MTMView(container, self.client),
-            "ltm":       LTMView(container, self.client),
-            "settings":  SettingsView(container, self.client),
-            "log":       LogView(container, self.client),
+            "dashboard": DashboardView(container, self.client, translator=tr),
+            "stm":       STMView(container, self.client, translator=tr),
+            "mtm":       MTMView(container, self.client, translator=tr),
+            "ltm":       LTMView(container, self.client, translator=tr),
+            "settings":  SettingsView(container, self.client, translator=tr,
+                                      on_language_change=self._on_language_change),
+            "log":       LogView(container, self.client, translator=tr),
         }
         for panel in self._panels.values():
             panel.grid(row=0, column=0, sticky="nsew")
@@ -137,6 +147,12 @@ class PMSEditorApp(ctk.CTk):
         self._active = key
         self._panels[key].refresh()
 
+    # ── Language change ───────────────────────────────────────────────────────
+
+    def _on_language_change(self, language: str) -> None:
+        set_language(language)
+        self.translator.set_current_language(language)
+
     # ── Connection ────────────────────────────────────────────────────────────
 
     def _connect(self) -> None:
@@ -146,8 +162,8 @@ class PMSEditorApp(ctk.CTk):
             for panel in self._panels.values():
                 panel.client = self.client
 
-        self._btn_connect.configure(state="disabled", text="Connecting…")
-        self._status_lbl.configure(text="●  Connecting…", text_color="#f0a500")
+        self._btn_connect.configure(state="disabled", text=self.tr("topbar.connecting"))
+        self._status_lbl.configure(text=self.tr("status.connecting"), text_color="#f0a500")
         threading.Thread(target=self._do_connect, daemon=True).start()
 
     def _do_connect(self) -> None:
@@ -155,34 +171,31 @@ class PMSEditorApp(ctk.CTk):
         if alive:
             self.after(0, lambda: (
                 self._status_lbl.configure(
-                    text=f"●  Connected  {self.client.base_url}",
+                    text=f"{self.tr('status.connected_prefix')}  {self.client.base_url}",
                     text_color="#2ecc71",
                 ),
-                self._btn_connect.configure(state="normal", text="Connect"),
+                self._btn_connect.configure(state="normal", text=self.tr("topbar.connect")),
             ))
             self.after(0, lambda: self._panels[self._active].refresh() if self._active else None)
         else:
             self.after(0, lambda: (
                 self._status_lbl.configure(
-                    text="●  Cannot connect — is the API running?",
+                    text=self.tr("status.cannot_connect"),
                     text_color="#e74c3c",
                 ),
-                self._btn_connect.configure(state="normal", text="Connect"),
+                self._btn_connect.configure(state="normal", text=self.tr("topbar.connect")),
             ))
         self.after(_CHECK_MS, self._connect_silent)
 
     def _connect_silent(self) -> None:
-        """Periodic background health check (no UI changes on reconnect)."""
         def _check() -> None:
             alive = self.client.is_alive()
             color = "#2ecc71" if alive else "#e74c3c"
             text = (
-                f"●  Connected  {self.client.base_url}" if alive
-                else "●  Cannot connect — is the API running?"
+                f"{self.tr('status.connected_prefix')}  {self.client.base_url}" if alive
+                else self.tr("status.cannot_connect")
             )
-            self.after(0, lambda: self._status_lbl.configure(
-                text=text, text_color=color
-            ))
+            self.after(0, lambda: self._status_lbl.configure(text=text, text_color=color))
             self.after(_CHECK_MS, self._connect_silent)
 
         threading.Thread(target=_check, daemon=True).start()

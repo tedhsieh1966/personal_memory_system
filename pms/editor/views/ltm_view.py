@@ -21,30 +21,33 @@ class LTMView(ViewBase):
         # ── Header ─────────────────────────────────────────────────────────
         hdr = ctk.CTkFrame(self, fg_color="transparent")
         hdr.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 8))
-        ctk.CTkLabel(hdr, text="Long-Term Memory", font=("Arial", 16, "bold")).pack(side="left")
+        ctk.CTkLabel(hdr, text=self.tr("ltm.title"), font=("Arial", 16, "bold")).pack(side="left")
         self._count_lbl = ctk.CTkLabel(hdr, text="", text_color="#aaa", font=("Arial", 12))
         self._count_lbl.pack(side="left", padx=12)
-        ctk.CTkButton(hdr, text="Refresh", width=80, height=30, command=self.refresh).pack(side="right")
+        ctk.CTkButton(
+            hdr, text=self.tr("common.refresh"), width=80, height=30, command=self.refresh
+        ).pack(side="right")
 
         # ── Search bar ─────────────────────────────────────────────────────
         search_row = ctk.CTkFrame(self, fg_color="transparent")
         search_row.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 8))
         self._search_entry = ctk.CTkEntry(
-            search_row, placeholder_text="Semantic search…",
+            search_row, placeholder_text=self.tr("ltm.search_placeholder"),
             width=340, height=34, font=("Arial", 13),
         )
         self._search_entry.pack(side="left")
         self._search_entry.bind("<Return>", lambda _: self._do_search())
         ctk.CTkButton(
-            search_row, text="Search", width=80, height=34, command=self._do_search
+            search_row, text=self.tr("common.search"), width=80, height=34,
+            command=self._do_search,
         ).pack(side="left", padx=8)
 
         # ── Column headers ─────────────────────────────────────────────────
         col_hdr = ctk.CTkFrame(self, fg_color="#1e1e1e", corner_radius=0)
         col_hdr.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 2))
-        ctk.CTkLabel(col_hdr, text="ID",      width=90,  anchor="w", font=("Arial", 12, "bold")).pack(side="left", padx=(8, 0))
-        ctk.CTkLabel(col_hdr, text="Concept", anchor="w",             font=("Arial", 12, "bold")).pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(col_hdr, text="Updated", width=120, anchor="w",  font=("Arial", 12, "bold")).pack(side="left")
+        ctk.CTkLabel(col_hdr, text=self.tr("col.id"),      width=90,  anchor="w", font=("Arial", 12, "bold")).pack(side="left", padx=(8, 0))
+        ctk.CTkLabel(col_hdr, text=self.tr("col.concept"), anchor="w",             font=("Arial", 12, "bold")).pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(col_hdr, text=self.tr("col.updated"), width=120, anchor="w",  font=("Arial", 12, "bold")).pack(side="left")
         ctk.CTkLabel(col_hdr, text="", width=140).pack(side="right")
 
         # ── Scrollable list ────────────────────────────────────────────────
@@ -56,7 +59,7 @@ class LTMView(ViewBase):
 
     def refresh(self) -> None:
         self._search_entry.delete(0, "end")
-        self._status_lbl.configure(text="Loading…", text_color="#aaa")
+        self._status_lbl.configure(text=self.tr("common.loading"), text_color="#aaa")
         self._run_async(self.client.list_ltm, self._on_data)
 
     def _do_search(self) -> None:
@@ -64,12 +67,14 @@ class LTMView(ViewBase):
         if not q:
             self.refresh()
             return
-        self._status_lbl.configure(text="Searching…", text_color="#f0a500")
+        self._status_lbl.configure(text=self.tr("ltm.searching"), text_color="#f0a500")
         self._run_async(lambda: self.client.retrieve(q, top_k=20), self._on_search)
 
     def _on_search(self, data: dict | None, err: Exception | None) -> None:
         if err or not data:
-            self._status_lbl.configure(text=f"Search error: {err}", text_color="#e74c3c")
+            self._status_lbl.configure(
+                text=f"{self.tr('ltm.search_error')}: {err}", text_color="#e74c3c"
+            )
             return
         results = data.get("results", [])
         ltm = [r for r in results if r.get("tier") == "ltm"]
@@ -78,17 +83,19 @@ class LTMView(ViewBase):
              "updated_at": r.get("timestamp"), "created_at": r.get("timestamp")}
             for r in ltm
         ]
-        self._count_lbl.configure(text=f"({len(converted)} matches)")
-        partial_note = "  (partial — LTM not fully searched)" if data.get("partial") else ""
+        self._count_lbl.configure(text=f"({len(converted)} {self.tr('unit.matches')})")
+        partial_note = self.tr("ltm.partial_note") if data.get("partial") else ""
         self._status_lbl.configure(text=partial_note, text_color="#aaa")
         self._render_rows(converted)
 
     def _on_data(self, rows: list[dict] | None, err: Exception | None) -> None:
         if err:
-            self._status_lbl.configure(text=f"Error: {err}", text_color="#e74c3c")
+            self._status_lbl.configure(
+                text=f"{self.tr('common.error')}: {err}", text_color="#e74c3c"
+            )
             return
         rows = rows or []
-        self._count_lbl.configure(text=f"({len(rows)} concepts)")
+        self._count_lbl.configure(text=f"({len(rows)} {self.tr('unit.concepts')})")
         self._status_lbl.configure(text="")
         self._render_rows(rows)
 
@@ -112,12 +119,12 @@ class LTMView(ViewBase):
             ctk.CTkLabel(row, text=updated, width=120, anchor="w", text_color="#aaa", font=("Arial", 12)).pack(side="left")
 
             ctk.CTkButton(
-                row, text="Export", width=62, height=26,
+                row, text=self.tr("common.export"), width=62, height=26,
                 fg_color="#2a2d2e", hover_color="#3a3d3e", font=("Arial", 12),
                 command=lambda i=cid, c=item.get("concept", ""): self._export(i, c),
             ).pack(side="right", padx=2, pady=2)
             ctk.CTkButton(
-                row, text="Delete", width=62, height=26,
+                row, text=self.tr("common.delete"), width=62, height=26,
                 fg_color="#c0392b", hover_color="#922b21", font=("Arial", 12),
                 command=lambda i=cid: self._delete(i),
             ).pack(side="right", padx=2, pady=2)
@@ -125,13 +132,18 @@ class LTMView(ViewBase):
             ctk.CTkFrame(self._scroll, height=1, fg_color="#2a2d2e").pack(fill="x")
 
     def _delete(self, concept_id: str) -> None:
-        if not confirm("Delete Concept", f"Delete LTM concept {concept_id[:12]}…?"):
+        if not confirm(
+            self.tr("confirm.delete_concept_title"),
+            f"{self.tr('confirm.delete_concept_msg')} {concept_id[:12]}…?",
+        ):
             return
         self._run_async(lambda: self.client.delete_ltm(concept_id), self._on_deleted)
 
     def _on_deleted(self, _: object, err: Exception | None) -> None:
         if err:
-            self._status_lbl.configure(text=f"Delete failed: {err}", text_color="#e74c3c")
+            self._status_lbl.configure(
+                text=f"{self.tr('common.delete_failed')}: {err}", text_color="#e74c3c"
+            )
         self.refresh()
 
     def _export(self, concept_id: str, concept_text: str) -> None:
@@ -148,4 +160,6 @@ class LTMView(ViewBase):
             else:
                 json.dump({"id": concept_id, "concept": concept_text}, f,
                           indent=2, ensure_ascii=False)
-        self._status_lbl.configure(text=f"Exported to {path}", text_color="#2ecc71")
+        self._status_lbl.configure(
+            text=f"{self.tr('ltm.exported')} {path}", text_color="#2ecc71"
+        )

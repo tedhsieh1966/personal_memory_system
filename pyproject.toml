@@ -17,6 +17,9 @@ dependencies = [
     "watchdog>=4.0.0",
     "customtkinter>=5.2.0",
     "sentence-transformers>=3.0.0",
+    "py_libraries",
+    "pandas>=1.5.0",
+    "openpyxl>=3.0.0",
 ]
 
 [project.optional-dependencies]

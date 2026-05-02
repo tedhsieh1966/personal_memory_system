@@ -16,7 +16,7 @@ class DashboardView(ViewBase):
         self.grid_rowconfigure(2, weight=1)
 
         ctk.CTkLabel(
-            self, text="Dashboard", font=("Arial", 16, "bold")
+            self, text=self.tr("nav.dashboard"), font=("Arial", 16, "bold")
         ).grid(row=0, column=0, columnspan=2, sticky="w", padx=20, pady=(20, 12))
 
         # ── Count cards ────────────────────────────────────────────────────
@@ -24,9 +24,9 @@ class DashboardView(ViewBase):
         cards.grid(row=1, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 12))
         cards.grid_columnconfigure((0, 1, 2), weight=1)
 
-        self._stm_lbl = self._make_card(cards, "STM Events",   0)
-        self._mtm_lbl = self._make_card(cards, "MTM Episodes", 1)
-        self._ltm_lbl = self._make_card(cards, "LTM Concepts", 2)
+        self._stm_lbl = self._make_card(cards, f"STM {self.tr('unit.events')}",   0)
+        self._mtm_lbl = self._make_card(cards, f"MTM {self.tr('unit.episodes')}", 1)
+        self._ltm_lbl = self._make_card(cards, f"LTM {self.tr('unit.concepts')}", 2)
 
         # ── Left: scheduler + actions ──────────────────────────────────────
         left = ctk.CTkFrame(self)
@@ -34,19 +34,19 @@ class DashboardView(ViewBase):
         left.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            left, text="Scheduler", font=("Arial", 13, "bold")
+            left, text=self.tr("dash.scheduler"), font=("Arial", 13, "bold")
         ).grid(row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 6))
 
-        self._add_info_row(left, 1, "STM→MTM last run",  "lbl_last_stm")
-        self._add_info_row(left, 2, "MTM→LTM last run",  "lbl_last_mtm")
-        self._add_info_row(left, 3, "Maintenance last run", "lbl_last_maint", pad_bottom=12)
+        self._add_info_row(left, 1, self.tr("dash.last_stm_run"),  "lbl_last_stm")
+        self._add_info_row(left, 2, self.tr("dash.last_mtm_run"),  "lbl_last_mtm")
+        self._add_info_row(left, 3, self.tr("dash.last_maint_run"), "lbl_last_maint", pad_bottom=12)
 
         ctk.CTkFrame(left, height=1, fg_color="gray30").grid(
             row=4, column=0, columnspan=2, sticky="ew", padx=12, pady=0
         )
 
         ctk.CTkLabel(
-            left, text="Quick Actions", font=("Arial", 13, "bold")
+            left, text=self.tr("dash.quick_actions"), font=("Arial", 13, "bold")
         ).grid(row=5, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 6))
 
         self._action_lbl = ctk.CTkLabel(
@@ -55,12 +55,12 @@ class DashboardView(ViewBase):
         self._action_lbl.grid(row=6, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 6))
 
         ctk.CTkButton(
-            left, text="Consolidate STM → MTM", height=34,
+            left, text=self.tr("dash.consolidate_stm"), height=34,
             command=self._consolidate_stm,
         ).grid(row=7, column=0, columnspan=2, sticky="ew", padx=12, pady=3)
 
         ctk.CTkButton(
-            left, text="Consolidate MTM → LTM", height=34,
+            left, text=self.tr("dash.consolidate_mtm"), height=34,
             command=self._consolidate_mtm,
         ).grid(row=8, column=0, columnspan=2, sticky="ew", padx=12, pady=(3, 14))
 
@@ -71,14 +71,14 @@ class DashboardView(ViewBase):
         right.grid_rowconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            right, text="Add Memory", font=("Arial", 13, "bold")
+            right, text=self.tr("dash.add_memory"), font=("Arial", 13, "bold")
         ).grid(row=0, column=0, sticky="w", padx=12, pady=(12, 6))
 
         self._ingest_box = ctk.CTkTextbox(right, font=("Arial", 13))
         self._ingest_box.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 8))
 
         ctk.CTkButton(
-            right, text="Add Memory", height=34,
+            right, text=self.tr("dash.add_memory"), height=34,
             fg_color="#1a7a3c", hover_color="#145e2e",
             command=self._add_memory,
         ).grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 14))
@@ -105,22 +105,22 @@ class DashboardView(ViewBase):
         self.lbl_last_maint.configure(text=fmt_time(data.get("last_maintenance")))
 
     def _consolidate_stm(self) -> None:
-        if not confirm("Consolidate STM", "Run STM → MTM consolidation now?"):
+        if not confirm(self.tr("confirm.consolidate_stm_title"), self.tr("confirm.consolidate_stm_msg")):
             return
-        self._action_lbl.configure(text="Running STM → MTM…", text_color="#f0a500")
+        self._action_lbl.configure(text=self.tr("dash.running_stm"), text_color="#f0a500")
         self._run_async(self.client.consolidate_stm, self._on_consolidate)
 
     def _consolidate_mtm(self) -> None:
-        if not confirm("Consolidate MTM", "Run MTM → LTM consolidation now?"):
+        if not confirm(self.tr("confirm.consolidate_mtm_title"), self.tr("confirm.consolidate_mtm_msg")):
             return
-        self._action_lbl.configure(text="Running MTM → LTM…", text_color="#f0a500")
+        self._action_lbl.configure(text=self.tr("dash.running_mtm"), text_color="#f0a500")
         self._run_async(self.client.consolidate_mtm, self._on_consolidate)
 
     def _on_consolidate(self, data: dict | None, err: Exception | None) -> None:
         if err:
-            self._action_lbl.configure(text=f"Error: {err}", text_color="#e74c3c")
+            self._action_lbl.configure(text=f"{self.tr('common.error')}: {err}", text_color="#e74c3c")
         else:
-            self._action_lbl.configure(text=f"Done: {data}", text_color="#2ecc71")
+            self._action_lbl.configure(text=f"{self.tr('dash.done')}: {data}", text_color="#2ecc71")
         self.refresh()
 
     def _add_memory(self) -> None:
@@ -134,8 +134,10 @@ class DashboardView(ViewBase):
 
     def _on_ingested(self, data: dict | None, err: Exception | None) -> None:
         if err:
-            self._action_lbl.configure(text=f"Ingest error: {err}", text_color="#e74c3c")
+            self._action_lbl.configure(
+                text=f"{self.tr('common.ingest_error')}: {err}", text_color="#e74c3c"
+            )
         else:
             self._ingest_box.delete("1.0", "end")
-            self._action_lbl.configure(text="Memory added.", text_color="#2ecc71")
+            self._action_lbl.configure(text=self.tr("dash.memory_added"), text_color="#2ecc71")
             self.refresh()

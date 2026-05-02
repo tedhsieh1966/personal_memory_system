@@ -31,23 +31,25 @@ class LogView(ViewBase):
         toolbar = ctk.CTkFrame(self, fg_color="transparent")
         toolbar.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 6))
 
-        ctk.CTkLabel(toolbar, text="Log", font=("Arial", 16, "bold")).pack(side="left")
+        ctk.CTkLabel(toolbar, text=self.tr("log.title"), font=("Arial", 16, "bold")).pack(side="left")
 
         ctk.CTkButton(
-            toolbar, text="Refresh", width=80, height=30, command=self._load_log
+            toolbar, text=self.tr("common.refresh"), width=80, height=30,
+            command=self._load_log,
         ).pack(side="left", padx=(16, 4))
 
         ctk.CTkButton(
-            toolbar, text="Browse…", width=80, height=30, command=self._browse_log
+            toolbar, text=self.tr("log.browse"), width=80, height=30,
+            command=self._browse_log,
         ).pack(side="left", padx=4)
 
         self._auto_var = tk.BooleanVar(value=False)
         ctk.CTkSwitch(
-            toolbar, text="Auto-refresh", variable=self._auto_var,
+            toolbar, text=self.tr("log.auto_refresh"), variable=self._auto_var,
             font=("Arial", 12), command=self._toggle_auto,
         ).pack(side="left", padx=12)
 
-        ctk.CTkLabel(toolbar, text="Filter:", font=("Arial", 12)).pack(side="left", padx=(12, 4))
+        ctk.CTkLabel(toolbar, text=self.tr("log.filter"), font=("Arial", 12)).pack(side="left", padx=(12, 4))
         self._level_var = tk.StringVar(value="ALL")
         ctk.CTkComboBox(
             toolbar, variable=self._level_var,
@@ -59,25 +61,21 @@ class LogView(ViewBase):
         # ── Path row ───────────────────────────────────────────────────────
         path_row = ctk.CTkFrame(self, fg_color="transparent")
         path_row.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 4))
-        ctk.CTkLabel(path_row, text="File:", font=("Arial", 12), text_color="#aaa").pack(side="left")
+        ctk.CTkLabel(path_row, text=self.tr("log.file_label"), font=("Arial", 12), text_color="#aaa").pack(side="left")
         self._path_var = tk.StringVar(value=str(Path.cwd() / _DEFAULT_LOG))
         ctk.CTkEntry(
             path_row, textvariable=self._path_var, width=480, height=30, font=("Arial", 12),
         ).pack(side="left", padx=8)
         ctk.CTkButton(
-            path_row, text="Load", width=60, height=30, font=("Arial", 12),
+            path_row, text=self.tr("log.load"), width=60, height=30, font=("Arial", 12),
             command=self._load_log,
         ).pack(side="left")
 
         # ── Textbox ────────────────────────────────────────────────────────
-        self._textbox = ctk.CTkTextbox(
-            self, state="disabled", font=("Consolas", 11),
-        )
+        self._textbox = ctk.CTkTextbox(self, state="disabled", font=("Consolas", 11))
         self._textbox.grid(row=2, column=0, sticky="nsew", padx=20, pady=(0, 8))
 
-        self._status_lbl = ctk.CTkLabel(
-            self, text="", text_color="#aaa", font=("Arial", 12),
-        )
+        self._status_lbl = ctk.CTkLabel(self, text="", text_color="#aaa", font=("Arial", 12))
         self._status_lbl.grid(row=3, column=0, sticky="w", padx=20, pady=(0, 12))
 
     def refresh(self) -> None:

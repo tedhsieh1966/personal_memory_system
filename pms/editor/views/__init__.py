@@ -11,10 +11,12 @@ import customtkinter as ctk
 class ViewBase(ctk.CTkFrame):
     """Base frame for all editor views with thread-safe async helper."""
 
-    def __init__(self, parent: Any, client: Any, **kwargs: Any) -> None:
+    def __init__(self, parent: Any, client: Any, translator: Any = None, **kwargs: Any) -> None:
         kwargs.setdefault("fg_color", "transparent")
         super().__init__(parent, **kwargs)
         self.client = client
+        # translator.translate bound as self.tr; falls back to identity if absent
+        self.tr: Callable[[str], str] = translator.translate if translator else (lambda k: k)
 
     def _run_async(self, fn: Callable, on_done: Callable[[Any, Exception | None], None]) -> None:
         """Run fn in a background thread; schedule on_done(result, error) on UI thread."""

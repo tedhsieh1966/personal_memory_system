@@ -101,14 +101,12 @@ def cmd_status():
 
     data = api_get("/status")
     if data:
-        mem = data.get("memory", {})
-        last = data.get("last_consolidation", {})
         print(f"API     : reachable at {API_BASE}")
-        print(f"STM     : {mem.get('stm', '?')} events")
-        print(f"MTM     : {mem.get('mtm', '?')} episodes")
-        print(f"LTM     : {mem.get('ltm', '?')} concepts")
-        stm_ts = last.get("stm_to_mtm") or "never"
-        mtm_ts = last.get("mtm_to_ltm") or "never"
+        print(f"STM     : {data.get('stm_count', '?')} events")
+        print(f"MTM     : {data.get('mtm_count', '?')} episodes")
+        print(f"LTM     : {data.get('ltm_count', '?')} concepts")
+        stm_ts = data.get("last_stm_consolidation") or "never"
+        mtm_ts = data.get("last_mtm_consolidation") or "never"
         print(f"Last consolidation  STM→MTM: {stm_ts}   MTM→LTM: {mtm_ts}")
     else:
         print(f"API     : \033[31mnot reachable\033[0m ({API_BASE})")

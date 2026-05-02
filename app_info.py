@@ -36,6 +36,7 @@ else:
 APP_DESKTOP_LINK = APP_CAPS + " Editor.lnk"
 
 FP_SERVER_ENTRY     = f"{ROOT_DIR}/run_server.py"
+FP_LANGUAGES        = f"{ROOT_DIR}/pms/editor/languages.xlsx"
 FP_EDITOR_ENTRY     = f"{ROOT_DIR}/run_editor.py"
 FP_MCP_ENTRY        = f"{ROOT_DIR}/run_mcp.py"
 FP_INSTALLER_ENTRY  = f"{ROOT_DIR}/installer.py"

@@ -24,19 +24,21 @@ class STMView(ViewBase):
         hdr = ctk.CTkFrame(self, fg_color="transparent")
         hdr.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 8))
         ctk.CTkLabel(
-            hdr, text="Short-Term Memory", font=("Arial", 16, "bold")
+            hdr, text=self.tr("stm.title"), font=("Arial", 16, "bold")
         ).pack(side="left")
         self._count_lbl = ctk.CTkLabel(hdr, text="", text_color="#aaa", font=("Arial", 12))
         self._count_lbl.pack(side="left", padx=12)
-        ctk.CTkButton(hdr, text="Refresh", width=80, height=30, command=self.refresh).pack(side="right")
+        ctk.CTkButton(
+            hdr, text=self.tr("common.refresh"), width=80, height=30, command=self.refresh
+        ).pack(side="right")
 
         # ── Column headers ─────────────────────────────────────────────────
         col_hdr = ctk.CTkFrame(self, fg_color="#1e1e1e", corner_radius=0)
         col_hdr.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 2))
-        ctk.CTkLabel(col_hdr, text="Time",    width=_COL_TIME, anchor="w", font=("Arial", 12, "bold")).pack(side="left", padx=(8, 0))
-        ctk.CTkLabel(col_hdr, text="Source",  width=_COL_SRC,  anchor="w", font=("Arial", 12, "bold")).pack(side="left")
-        ctk.CTkLabel(col_hdr, text="Keywords",width=_COL_KW,   anchor="w", font=("Arial", 12, "bold")).pack(side="left")
-        ctk.CTkLabel(col_hdr, text="Content", anchor="w",                  font=("Arial", 12, "bold")).pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(col_hdr, text=self.tr("col.time"),     width=_COL_TIME, anchor="w", font=("Arial", 12, "bold")).pack(side="left", padx=(8, 0))
+        ctk.CTkLabel(col_hdr, text=self.tr("col.source"),   width=_COL_SRC,  anchor="w", font=("Arial", 12, "bold")).pack(side="left")
+        ctk.CTkLabel(col_hdr, text=self.tr("col.keywords"), width=_COL_KW,   anchor="w", font=("Arial", 12, "bold")).pack(side="left")
+        ctk.CTkLabel(col_hdr, text=self.tr("col.content"),  anchor="w",                  font=("Arial", 12, "bold")).pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(col_hdr, text="", width=68).pack(side="right")
 
         # ── Scrollable list ────────────────────────────────────────────────
@@ -47,15 +49,17 @@ class STMView(ViewBase):
         self._status_lbl.grid(row=3, column=0, sticky="w", padx=20, pady=(0, 12))
 
     def refresh(self) -> None:
-        self._status_lbl.configure(text="Loading…")
+        self._status_lbl.configure(text=self.tr("common.loading"))
         self._run_async(self.client.list_stm, self._on_data)
 
     def _on_data(self, rows: list[dict] | None, err: Exception | None) -> None:
         if err:
-            self._status_lbl.configure(text=f"Error: {err}", text_color="#e74c3c")
+            self._status_lbl.configure(
+                text=f"{self.tr('common.error')}: {err}", text_color="#e74c3c"
+            )
             return
         rows = rows or []
-        self._count_lbl.configure(text=f"({len(rows)} events)")
+        self._count_lbl.configure(text=f"({len(rows)} {self.tr('unit.events')})")
         self._status_lbl.configure(text="")
         self._render_rows(rows)
 
@@ -79,20 +83,24 @@ class STMView(ViewBase):
 
             eid = item["id"]
             ctk.CTkButton(
-                row, text="Delete", width=62, height=26,
-                fg_color="#c0392b", hover_color="#922b21",
-                font=("Arial", 12),
+                row, text=self.tr("common.delete"), width=62, height=26,
+                fg_color="#c0392b", hover_color="#922b21", font=("Arial", 12),
                 command=lambda i=eid: self._delete(i),
             ).pack(side="right", padx=4, pady=2)
 
             ctk.CTkFrame(self._scroll, height=1, fg_color="#2a2d2e").pack(fill="x")
 
     def _delete(self, event_id: int) -> None:
-        if not confirm("Delete STM Event", f"Delete STM event #{event_id}?"):
+        if not confirm(
+            self.tr("confirm.delete_stm_title"),
+            f"{self.tr('confirm.delete_stm_msg')} #{event_id}?",
+        ):
             return
         self._run_async(lambda: self.client.delete_stm(event_id), self._on_deleted)
 
     def _on_deleted(self, _: object, err: Exception | None) -> None:
         if err:
-            self._status_lbl.configure(text=f"Delete failed: {err}", text_color="#e74c3c")
+            self._status_lbl.configure(
+                text=f"{self.tr('common.delete_failed')}: {err}", text_color="#e74c3c"
+            )
         self.refresh()
