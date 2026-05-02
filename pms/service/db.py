@@ -6,24 +6,48 @@ from pathlib import Path
 
 from .config import get_config
 
-_conn: sqlite3.Connection | None = None
-_lock = threading.Lock()
+# One sqlite3.Connection per thread. Sharing a single connection across the
+# threads that asyncio.to_thread spawns produces sporadic
+# "sqlite3.InterfaceError: bad parameter or other API misuse" errors, because
+# Python's sqlite3 driver does not serialise concurrent execute() on a shared
+# connection. WAL mode (set per-connection below) coordinates writers at the
+# database-file level, so multiple connections to the same DB are safe.
+
+_local = threading.local()
+_init_lock = threading.Lock()
+_initialized = False
 
 
 def get_conn() -> sqlite3.Connection:
-    global _conn
-    if _conn is None:
-        with _lock:
-            if _conn is None:
-                path = get_config()["storage"]["db_path"]
-                Path(path).parent.mkdir(parents=True, exist_ok=True)
-                conn = sqlite3.connect(path, check_same_thread=False)
-                conn.row_factory = sqlite3.Row
-                conn.execute("PRAGMA journal_mode=WAL")
-                conn.execute("PRAGMA foreign_keys=ON")
-                _init_schema(conn)
-                _conn = conn
-    return _conn
+    """Return a thread-local sqlite3.Connection, creating it on first call."""
+    global _initialized
+
+    conn = getattr(_local, "conn", None)
+    if conn is not None:
+        return conn
+
+    path = get_config()["storage"]["db_path"]
+
+    # Schema init runs exactly once across all threads; subsequent connections
+    # just open the already-initialised file.
+    with _init_lock:
+        if not _initialized:
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            init_conn = sqlite3.connect(path)
+            init_conn.row_factory = sqlite3.Row
+            init_conn.execute("PRAGMA journal_mode=WAL")
+            init_conn.execute("PRAGMA foreign_keys=ON")
+            _init_schema(init_conn)
+            init_conn.close()
+            _initialized = True
+
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    # journal_mode=WAL is persisted in the DB header, but PRAGMA foreign_keys
+    # is per-connection and must be set every time.
+    conn.execute("PRAGMA foreign_keys=ON")
+    _local.conn = conn
+    return conn
 
 
 def _init_schema(conn: sqlite3.Connection) -> None:

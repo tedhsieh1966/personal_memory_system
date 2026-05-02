@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import threading
 from pathlib import Path
 
 import pytest
@@ -64,7 +65,8 @@ def isolated_env(tmp_path, monkeypatch):
     import pms.service.ltm as _ltm_mod
 
     _cfg_mod._config = None
-    _db_mod._conn = None
+    _db_mod._local = threading.local()
+    _db_mod._initialized = False
     _ltm_mod._db = None
     _ltm_mod._table = None
 
