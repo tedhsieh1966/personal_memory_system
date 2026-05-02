@@ -7,6 +7,7 @@ import platform
 import subprocess
 import tempfile
 import urllib.request
+import winreg
 import zipfile
 from pathlib import Path
 import tkinter as tk
@@ -243,6 +244,11 @@ class PMS_Installer:
                 if config_src.exists():
                     shutil.copy2(config_src, config_dst)
 
+            # 2.5 add INSTALL_DIR to the user's PATH so pms_manager / pms_server
+            #     can be invoked from any shell. Idempotent on reinstall.
+            self._set_status("Adding PMS to PATH…", 30)
+            self._add_to_user_path(str(INSTALL_DIR))
+
             # 3. install Windows service
             self._set_status("Installing Windows service…", 40)
             svc_ok = self._install_service()
@@ -267,8 +273,10 @@ class PMS_Installer:
             messagebox.showinfo(
                 "Installation Complete",
                 f"{BRIEF} has been installed to:\n{INSTALL_DIR}\n\n"
-                + ("The PMS server is running on http://127.0.0.1:8765" if svc_ok
-                   else "Start pms_server.exe manually (NSSM service not installed).")
+                + ("The PMS server is running on http://127.0.0.1:8765\n\n" if svc_ok
+                   else "Start pms_server.exe manually (NSSM service not installed).\n\n")
+                + "PMS has been added to your PATH. Open a new terminal to run\n"
+                + "'pms_manager status' from anywhere."
             )
 
             if self.launch_var.get():
@@ -289,6 +297,57 @@ class PMS_Installer:
         for svc in (APP_SERVER, self._LEGACY_SERVICE_NAME):
             subprocess.run(["net", "stop",   svc], capture_output=True)
             subprocess.run(["sc",  "delete", svc], capture_output=True)
+
+    # ── User PATH ────────────────────────────────────────────────────────────
+    #
+    # The install dir lives at %APPDATA%\pms, which is per-user, so the entry
+    # belongs in the user PATH (HKCU\Environment\Path) — not system PATH.
+    # We preserve the original value type (REG_SZ vs REG_EXPAND_SZ) and
+    # broadcast WM_SETTINGCHANGE so new shells pick it up without a logoff.
+
+    @staticmethod
+    def _read_user_path() -> tuple[str, int]:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_READ) as key:
+            try:
+                value, kind = winreg.QueryValueEx(key, "Path")
+                return value, kind
+            except FileNotFoundError:
+                return "", winreg.REG_EXPAND_SZ
+
+    @staticmethod
+    def _write_user_path(value: str, kind: int) -> None:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, "Path", 0, kind, value)
+        # Notify running shells / explorer that the environment changed.
+        HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG = 0xFFFF, 0x001A, 0x0002
+        ctypes.windll.user32.SendMessageTimeoutW(
+            HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment",
+            SMTO_ABORTIFHUNG, 5000, ctypes.byref(ctypes.c_ulong()),
+        )
+
+    def _add_to_user_path(self, directory: str) -> bool:
+        """Append `directory` to user PATH if not already present. Returns True if added."""
+        try:
+            value, kind = self._read_user_path()
+            entries = [p for p in value.split(";") if p]
+            target = os.path.normcase(os.path.normpath(directory))
+            if any(os.path.normcase(os.path.normpath(p)) == target for p in entries):
+                return False
+            entries.append(directory)
+            self._write_user_path(";".join(entries), kind)
+            return True
+        except Exception:
+            return False
+
+    def _remove_from_user_path(self, directory: str) -> None:
+        try:
+            value, kind = self._read_user_path()
+            target = os.path.normcase(os.path.normpath(directory))
+            entries = [p for p in value.split(";")
+                       if p and os.path.normcase(os.path.normpath(p)) != target]
+            self._write_user_path(";".join(entries), kind)
+        except Exception:
+            pass
 
     def _install_service(self):
         nssm = self._find_or_install_nssm()
@@ -344,6 +403,9 @@ class PMS_Installer:
         try:
             self._set_status("Stopping and removing service…", 20)
             self._remove_service()
+
+            self._set_status("Removing PMS from PATH…", 40)
+            self._remove_from_user_path(str(INSTALL_DIR))
 
             self._set_status("Removing desktop shortcut…", 50)
             sc = Path(os.environ["USERPROFILE"]) / "Desktop" / APP_DESKTOP_LINK
