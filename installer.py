@@ -25,10 +25,31 @@ NSSM_ZIP_NAME        = "nssm-2.24"
 OLLAMA_INSTALLER_URL = "https://ollama.com/download/OllamaSetup.exe"
 
 
+def _init_translator():
+    """Load LanguageTranslator from the xlsx bundled alongside this script."""
+    try:
+        from py_libraries.LanguageOp import LanguageTranslator, get_current_input_language
+        if getattr(sys, "frozen", False):
+            base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+        else:
+            base = os.path.join(current_dir, "pms", "editor")
+        xlsx = os.path.join(base, "languages.xlsx")
+        translator = LanguageTranslator(xlsx)
+        sys_lang = get_current_input_language().get("language_name", "")
+        available = translator.get_languages()
+        translator.set_current_language(sys_lang if sys_lang in available else available[0])
+        return translator.translate
+    except Exception:
+        return lambda k: k  # fallback: return the key itself
+
+
+tr = _init_translator()
+
+
 class PMS_Installer:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(f"{BRIEF} {VERSION} — Installer")
+        self.root.title(f"{BRIEF} {VERSION} — {tr('installer.window_title')}")
         self.root.geometry("572x480")
         self.root.resizable(False, False)
 
@@ -74,22 +95,22 @@ class PMS_Installer:
         tk.Label(self.root, text=f"Version {VERSION}", fg="gray").pack(pady=(2, 10))
 
         color = "green" if self.is_installed else "red"
-        text  = f"{APP_CAPS} is installed at {INSTALL_DIR}" if self.is_installed else f"{APP_CAPS} is not installed"
+        text  = f"{APP_CAPS} {tr('installer.installed_at')} {INSTALL_DIR}" if self.is_installed else f"{APP_CAPS} {tr('installer.not_installed')}"
         tk.Label(self.root, text=text, fg=color, font=("Arial", 9, "bold")).pack()
 
         # options
-        opts = tk.LabelFrame(self.root, text="Options", padx=10, pady=8)
+        opts = tk.LabelFrame(self.root, text=tr("installer.options"), padx=10, pady=8)
         opts.pack(fill="x", padx=20, pady=10)
 
         self.shortcut_var = tk.BooleanVar(value=True)
         self.launch_var   = tk.BooleanVar(value=True)
         self.ollama_var   = tk.BooleanVar(value=True)
 
-        tk.Checkbutton(opts, text="Create desktop shortcut for PMS Editor",
+        tk.Checkbutton(opts, text=tr("installer.create_shortcut"),
                        variable=self.shortcut_var).pack(anchor="w")
-        tk.Checkbutton(opts, text=f"Set up Ollama and pull models ({', '.join(OLLAMA_MODELS)})",
+        tk.Checkbutton(opts, text=f"{tr('installer.setup_ollama')} ({', '.join(OLLAMA_MODELS)})",
                        variable=self.ollama_var).pack(anchor="w")
-        tk.Checkbutton(opts, text="Launch editor after install",
+        tk.Checkbutton(opts, text=tr("installer.launch_after"),
                        variable=self.launch_var).pack(anchor="w")
 
         # progress
@@ -105,15 +126,15 @@ class PMS_Installer:
         bf.pack(pady=12)
 
         if self.is_installed:
-            tk.Button(bf, text="Uninstall",  width=12, bg="red", fg="white",
+            tk.Button(bf, text=tr("installer.btn_uninstall"), width=12, bg="red", fg="white",
                       command=self._uninstall).pack(side="left", padx=5)
-            tk.Button(bf, text="Reinstall",  width=12,
+            tk.Button(bf, text=tr("installer.btn_reinstall"), width=12,
                       command=self._install).pack(side="left", padx=5)
         else:
-            tk.Button(bf, text="Install", width=12,
+            tk.Button(bf, text=tr("installer.btn_install"), width=12,
                       command=self._install).pack(side="left", padx=5)
 
-        tk.Button(bf, text="Exit", width=12, command=self.root.destroy).pack(side="right", padx=5)
+        tk.Button(bf, text=tr("installer.btn_exit"), width=12, command=self.root.destroy).pack(side="right", padx=5)
 
     # ── Network helpers ──────────────────────────────────────────────────────
 
@@ -143,7 +164,7 @@ class PMS_Installer:
         if nssm:
             return nssm
         # 4. Last resort: fetch from nssm.cc (with timeout)
-        self._set_status("Downloading NSSM…")
+        self._set_status(tr("installer.downloading_nssm"))
         try:
             arch = "win64" if platform.machine() in ("AMD64", "x86_64") else "win32"
             with tempfile.TemporaryDirectory() as tmp:
@@ -157,7 +178,7 @@ class PMS_Installer:
                 )
             return str(local)
         except Exception as e:
-            self._set_status(f"NSSM download failed: {e}")
+            self._set_status(f"{tr('installer.nssm_failed')}: {e}")
             return None
 
     # ── Ollama ────────────────────────────────────────────────────────────────
@@ -173,20 +194,17 @@ class PMS_Installer:
             return str(known)
         # 3. Prompt user
         if not messagebox.askyesno(
-            "Ollama Not Found",
-            "Ollama is not installed.\n\n"
-            "Download and install it now? (~100 MB)\n\n"
-            "Ollama powers AI consolidation and vector search.\n"
-            "PMS works without it — retrieval falls back to keyword search only."
+            tr("installer.msg_ollama_title"),
+            tr("installer.msg_ollama_body"),
         ):
             return None
         # 4. Download and run silent installer
-        self._set_status("Downloading Ollama installer…")
+        self._set_status(tr("installer.downloading_ollama"))
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 setup_path = os.path.join(tmp, "OllamaSetup.exe")
                 self._download(OLLAMA_INSTALLER_URL, setup_path, timeout=120.0)
-                self._set_status("Installing Ollama…")
+                self._set_status(tr("installer.installing_ollama"))
                 subprocess.run(
                     [setup_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
                     check=True,
@@ -195,8 +213,8 @@ class PMS_Installer:
                 return str(known)
             return shutil.which("ollama")
         except Exception as e:
-            self._set_status(f"Ollama install failed: {e}")
-            messagebox.showwarning("Ollama Install Failed", str(e))
+            self._set_status(f"{tr('installer.ollama_failed')}: {e}")
+            messagebox.showwarning(tr("installer.msg_ollama_fail_title"), str(e))
             return None
 
     def _model_is_pulled(self, ollama: str, model: str) -> bool:
@@ -207,20 +225,17 @@ class PMS_Installer:
 
     def _install(self):
         if not self._is_admin():
-            messagebox.showerror(
-                "Administrator Required",
-                "Please run the installer as Administrator\n(required for Windows service installation)."
-            )
+            messagebox.showerror(tr("installer.msg_admin_title"), tr("installer.msg_admin_body"))
             return
         try:
             src = self._source_dir()
 
             # 0. stop any prior PMS services so their nssm.exe / pms_*.exe handles are released
-            self._set_status("Stopping previous PMS services…", 2)
+            self._set_status(tr("installer.stopping_svc"), 2)
             self._stop_existing_services()
 
             # 1. prepare directory — preserve existing config.yaml
-            self._set_status("Preparing install directory…", 5)
+            self._set_status(tr("installer.preparing_dir"), 5)
             if INSTALL_DIR.exists():
                 for item in INSTALL_DIR.iterdir():
                     if item.name == "config.yaml":
@@ -230,7 +245,7 @@ class PMS_Installer:
                 INSTALL_DIR.mkdir(parents=True)
 
             # 2. copy executables
-            self._set_status("Copying files…", 20)
+            self._set_status(tr("installer.copying_files"), 20)
             for fname in [APP_SERVER_EXE, APP_EDITOR_EXE, APP_MANAGER_EXE]:
                 s = src / fname
                 if s.exists():
@@ -246,19 +261,14 @@ class PMS_Installer:
 
             # 2.5 add INSTALL_DIR to the user's PATH so pms_manager / pms_server
             #     can be invoked from any shell. Idempotent on reinstall.
-            self._set_status("Adding PMS to PATH…", 30)
+            self._set_status(tr("installer.adding_path"), 30)
             self._add_to_user_path(str(INSTALL_DIR))
 
             # 3. install Windows service
-            self._set_status("Installing Windows service…", 40)
+            self._set_status(tr("installer.installing_svc"), 40)
             svc_ok = self._install_service()
             if not svc_ok:
-                messagebox.showwarning(
-                    "Service Not Installed",
-                    "NSSM could not be found or downloaded — the Windows service was not installed.\n\n"
-                    "Download NSSM from https://nssm.cc/download and add it to PATH,\n"
-                    "then re-run the installer."
-                )
+                messagebox.showwarning(tr("installer.msg_svc_title"), tr("installer.msg_svc_body"))
 
             # 4. pull Ollama models
             if self.ollama_var.get():
@@ -266,17 +276,16 @@ class PMS_Installer:
 
             # 5. desktop shortcut
             if self.shortcut_var.get():
-                self._set_status("Creating desktop shortcut…", 90)
+                self._set_status(tr("installer.creating_shortcut"), 90)
                 self._create_shortcut()
 
-            self._set_status("Installation complete.", 100)
+            self._set_status(tr("installer.complete"), 100)
             messagebox.showinfo(
-                "Installation Complete",
+                tr("installer.msg_complete_title"),
                 f"{BRIEF} has been installed to:\n{INSTALL_DIR}\n\n"
-                + ("The PMS server is running on http://127.0.0.1:8765\n\n" if svc_ok
-                   else "Start pms_server.exe manually (NSSM service not installed).\n\n")
-                + "PMS has been added to your PATH. Open a new terminal to run\n"
-                + "'pms_manager status' from anywhere."
+                + (f"{tr('installer.svc_running')}\n\n" if svc_ok
+                   else f"{tr('installer.svc_not_installed')}\n\n")
+                + tr("installer.path_notice"),
             )
 
             if self.launch_var.get():
@@ -285,8 +294,8 @@ class PMS_Installer:
             self.root.after(0, self._refresh_ui)
 
         except Exception as e:
-            messagebox.showerror("Installation Error", str(e))
-            self._set_status("Installation failed.", 0)
+            messagebox.showerror(tr("installer.msg_install_error"), str(e))
+            self._set_status(tr("installer.failed"), 0)
 
     _LEGACY_SERVICE_NAME = "pms_api"  # pre-rename service name; uninstall on upgrade
 
@@ -370,15 +379,15 @@ class PMS_Installer:
     def _pull_ollama_models(self):
         ollama = self._find_or_install_ollama()
         if not ollama:
-            self._set_status("Skipping model pull — Ollama not available.", 85)
+            self._set_status(tr("installer.skipping_ollama"), 85)
             return
         total = len(OLLAMA_MODELS)
         for i, model in enumerate(OLLAMA_MODELS):
             pct = 55 + int(30 * i / total)
             if self._model_is_pulled(ollama, model):
-                self._set_status(f"{model} already present — skipping.", pct)
+                self._set_status(f"{model} {tr('installer.already_present')}", pct)
                 continue
-            self._set_status(f"Pulling {model} (this may take several minutes)…", pct)
+            self._set_status(f"{tr('installer.pulling_model')} {model}…", pct)
             subprocess.run([ollama, "pull", model])
 
     def _create_shortcut(self):
@@ -394,38 +403,41 @@ class PMS_Installer:
 
     def _uninstall(self):
         if not self._is_admin():
-            messagebox.showerror("Administrator Required",
-                                 "Please run the installer as Administrator.")
+            messagebox.showerror(tr("installer.msg_admin_title"), tr("installer.msg_admin_body"))
             return
-        if not messagebox.askyesno("Confirm Uninstall",
-                                   f"Uninstall {BRIEF}?\n\nconfig.yaml will be preserved."):
+        if not messagebox.askyesno(
+            tr("installer.msg_uninstall_confirm_title"),
+            tr("installer.msg_uninstall_confirm_body").format(app=BRIEF),
+        ):
             return
         try:
-            self._set_status("Stopping and removing service…", 20)
+            self._set_status(tr("installer.uninstalling_svc"), 20)
             self._remove_service()
 
-            self._set_status("Removing PMS from PATH…", 40)
+            self._set_status(tr("installer.removing_path"), 40)
             self._remove_from_user_path(str(INSTALL_DIR))
 
-            self._set_status("Removing desktop shortcut…", 50)
+            self._set_status(tr("installer.removing_shortcut"), 50)
             sc = Path(os.environ["USERPROFILE"]) / "Desktop" / APP_DESKTOP_LINK
             if sc.exists():
                 sc.unlink()
 
-            self._set_status("Removing files…", 70)
+            self._set_status(tr("installer.removing_files"), 70)
             if INSTALL_DIR.exists():
                 for item in INSTALL_DIR.iterdir():
                     if item.name == "config.yaml":
                         continue
                     shutil.rmtree(item) if item.is_dir() else item.unlink()
 
-            self._set_status("Done.", 100)
-            messagebox.showinfo("Uninstalled",
-                                f"{BRIEF} has been uninstalled.\nconfig.yaml has been preserved at:\n{INSTALL_DIR}")
+            self._set_status(tr("installer.done"), 100)
+            messagebox.showinfo(
+                tr("installer.msg_uninstalled_title"),
+                f"{BRIEF} {tr('installer.msg_uninstalled_body')}\n{INSTALL_DIR}",
+            )
             self.root.after(0, self._refresh_ui)
 
         except Exception as e:
-            messagebox.showerror("Uninstall Error", str(e))
+            messagebox.showerror(tr("installer.msg_uninstall_error"), str(e))
 
     def _remove_service(self):
         nssm = shutil.which("nssm") or str(INSTALL_DIR / "nssm.exe")
