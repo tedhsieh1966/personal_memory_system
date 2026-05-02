@@ -41,4 +41,5 @@ FP_MCP_ENTRY        = f"{ROOT_DIR}/run_mcp.py"
 FP_INSTALLER_ENTRY  = f"{ROOT_DIR}/installer.py"
 FP_MANAGER_ENTRY    = f"{ROOT_DIR}/manager.py"
 FP_CONFIG           = f"{ROOT_DIR}/config.yaml"
+FP_NSSM             = f"{ROOT_DIR}/nssm.exe"          # vendored, bundled into installer
 FP_ICON             = f"{ROOT_DIR}/src/favicon.ico"   # placeholder – add icon to src/

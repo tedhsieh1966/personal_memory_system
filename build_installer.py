@@ -1,4 +1,4 @@
-# build_installer.py — bundles pms_server.exe + pms_editor.exe + config.yaml into pms_installer.exe
+# build_installer.py — bundles pms_server.exe + pms_editor.exe + nssm.exe + config.yaml into pms_installer.exe
 import os
 import sys
 import platform
@@ -24,6 +24,10 @@ def build_installer():
             print(f"Error: {name} not found in dist/. Run build.py first.")
             return False
 
+    if not os.path.exists(FP_NSSM):
+        print(f"Error: nssm.exe not found at {FP_NSSM}. Place a copy of nssm.exe in the project root.")
+        return False
+
     print(f"Building {APP_INSTALLER_EXE}...")
 
     args = [
@@ -35,6 +39,7 @@ def build_installer():
         f"--add-data={editor_exe}{SEPARATOR}.",
         f"--add-data={manager_exe}{SEPARATOR}.",
         f"--add-data={FP_CONFIG}{SEPARATOR}.",
+        f"--add-data={FP_NSSM}{SEPARATOR}.",
         "--hidden-import=win32com",
         "--hidden-import=win32com.client",
         "--hidden-import=win32com.server",

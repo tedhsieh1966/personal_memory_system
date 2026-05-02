@@ -114,21 +114,40 @@ class PMS_Installer:
 
         tk.Button(bf, text="Exit", width=12, command=self.root.destroy).pack(side="right", padx=5)
 
+    # ── Network helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _download(url: str, dst_path: str, timeout: float = 30.0) -> None:
+        """Download `url` to `dst_path` with a connect+read timeout. Raises on failure.
+        Replaces urllib.request.urlretrieve, which has no timeout parameter and can
+        block the Tkinter UI thread indefinitely on a slow or unreachable host."""
+        req = urllib.request.Request(url, headers={"User-Agent": "PMS-Installer"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp, open(dst_path, "wb") as f:
+            shutil.copyfileobj(resp, f)
+
     # ── NSSM ─────────────────────────────────────────────────────────────────
 
     def _find_or_install_nssm(self) -> str | None:
-        nssm = shutil.which("nssm")
-        if nssm:
-            return nssm
+        # 1. Already installed at INSTALL_DIR (kept across runs once placed)
         local = INSTALL_DIR / "nssm.exe"
         if local.exists():
             return str(local)
+        # 2. Bundled with this installer — copy it across, no network needed
+        bundled = self._source_dir() / "nssm.exe"
+        if bundled.exists():
+            shutil.copy2(bundled, local)
+            return str(local)
+        # 3. On PATH (developer machine etc.)
+        nssm = shutil.which("nssm")
+        if nssm:
+            return nssm
+        # 4. Last resort: fetch from nssm.cc (with timeout)
         self._set_status("Downloading NSSM…")
         try:
             arch = "win64" if platform.machine() in ("AMD64", "x86_64") else "win32"
             with tempfile.TemporaryDirectory() as tmp:
                 zip_path = os.path.join(tmp, "nssm.zip")
-                urllib.request.urlretrieve(NSSM_URL, zip_path)
+                self._download(NSSM_URL, zip_path, timeout=30.0)
                 with zipfile.ZipFile(zip_path) as zf:
                     zf.extract(f"{NSSM_ZIP_NAME}/{arch}/nssm.exe", tmp)
                 shutil.copy2(
@@ -165,7 +184,7 @@ class PMS_Installer:
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 setup_path = os.path.join(tmp, "OllamaSetup.exe")
-                urllib.request.urlretrieve(OLLAMA_INSTALLER_URL, setup_path)
+                self._download(OLLAMA_INSTALLER_URL, setup_path, timeout=120.0)
                 self._set_status("Installing Ollama…")
                 subprocess.run(
                     [setup_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"],
@@ -194,6 +213,10 @@ class PMS_Installer:
             return
         try:
             src = self._source_dir()
+
+            # 0. stop any prior PMS services so their nssm.exe / pms_*.exe handles are released
+            self._set_status("Stopping previous PMS services…", 2)
+            self._stop_existing_services()
 
             # 1. prepare directory — preserve existing config.yaml
             self._set_status("Preparing install directory…", 5)
@@ -259,6 +282,14 @@ class PMS_Installer:
 
     _LEGACY_SERVICE_NAME = "pms_api"  # pre-rename service name; uninstall on upgrade
 
+    def _stop_existing_services(self):
+        """Stop and unregister any prior PMS services (current + legacy names) using
+        built-in Windows tools, so their executables are unlocked before we replace files.
+        Uses net/sc rather than NSSM because NSSM may not be available yet on first install."""
+        for svc in (APP_SERVER, self._LEGACY_SERVICE_NAME):
+            subprocess.run(["net", "stop",   svc], capture_output=True)
+            subprocess.run(["sc",  "delete", svc], capture_output=True)
+
     def _install_service(self):
         nssm = self._find_or_install_nssm()
         if not nssm:
@@ -266,12 +297,6 @@ class PMS_Installer:
         server_exe = str(INSTALL_DIR / APP_SERVER_EXE)
         svc = APP_SERVER
         try:
-            # Migration: remove the legacy pms_api service if it exists from a prior install.
-            subprocess.run(["net", "stop", self._LEGACY_SERVICE_NAME],          capture_output=True)
-            subprocess.run([nssm, "remove", self._LEGACY_SERVICE_NAME, "confirm"], capture_output=True)
-
-            subprocess.run([nssm, "stop",    svc],                    capture_output=True)
-            subprocess.run([nssm, "remove",  svc, "confirm"],         capture_output=True)
             subprocess.run([nssm, "install", svc, server_exe],        check=True, capture_output=True)
             subprocess.run([nssm, "set", svc, "AppDirectory",  str(INSTALL_DIR)],           check=True, capture_output=True)
             subprocess.run([nssm, "set", svc, "Description",   BRIEF],                      check=True, capture_output=True)
