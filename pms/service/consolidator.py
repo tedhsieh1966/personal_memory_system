@@ -5,8 +5,8 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from ..config import get_config
-from ..db import get_conn
+from .config import get_config
+from .db import get_conn
 from . import embedder
 from . import ltm as ltm_svc
 from . import mtm as mtm_svc

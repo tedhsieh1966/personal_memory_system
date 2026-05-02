@@ -6,13 +6,13 @@ import time
 
 import pytest
 
-from pms.api.services import mtm
+from pms.service import mtm
 
 
 def _episode(summary="User worked on Python project", score=5.0, tags=None, access=0):
     eid = mtm.insert(summary, tags or ["python", "dev"], score, [1, 2])
     if access:
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         with conn:
             conn.execute(
@@ -83,7 +83,7 @@ class TestDecay:
     def test_decay_reduces_score(self):
         eid = _episode(score=8.0)
         # Set last_accessed to 30 days ago
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         past = time.time() - 30 * 86400
         with conn:
@@ -97,7 +97,7 @@ class TestDecay:
 
     def test_decay_deletes_below_threshold(self):
         eid = _episode(score=0.9)  # below threshold of 1.0 after any decay
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         past = time.time() - 1 * 86400
         with conn:
@@ -109,7 +109,7 @@ class TestDecay:
     def test_pinned_episodes_survive_decay(self):
         eid = _episode(score=0.5)
         mtm.patch_episode(eid, pinned=True, importance_score=None)
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         past = time.time() - 100 * 86400
         with conn:

@@ -7,8 +7,8 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from ..config import get_config
-from ..db import get_conn
+from .config import get_config
+from .db import get_conn
 
 logger = logging.getLogger(__name__)
 

@@ -59,9 +59,9 @@ def isolated_env(tmp_path, monkeypatch):
     monkeypatch.setenv("PMS_CONFIG", str(cfg_path))
 
     # Reset all module-level singletons so each test starts fresh
-    import pms.api.config as _cfg_mod
-    import pms.api.db as _db_mod
-    import pms.api.services.ltm as _ltm_mod
+    import pms.service.config as _cfg_mod
+    import pms.service.db as _db_mod
+    import pms.service.ltm as _ltm_mod
 
     _cfg_mod._config = None
     _db_mod._conn = None

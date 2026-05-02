@@ -4,12 +4,12 @@
 #   pms_manager <command> [options]
 #
 # Commands:
-#   start                  Start the pms_api Windows service
-#   stop                   Stop the pms_api Windows service
-#   restart                Restart the pms_api Windows service
+#   start                  Start the pms_server Windows service
+#   stop                   Stop the pms_server Windows service
+#   restart                Restart the pms_server Windows service
 #   status                 Show service state and API health
 #   consolidate [stm|mtm]  Trigger consolidation (default: stm)
-#   log [n]                Print the last n lines of pms_api.log (default: 50)
+#   log [n]                Print the last n lines of pms_server.log (default: 50)
 #
 # Commands may be prefixed with - or -- (e.g. -start, --start).
 
@@ -28,23 +28,23 @@ from app_info import *
 
 INSTALL_DIR = Path(os.getenv("APPDATA")) / APP
 API_BASE    = "http://127.0.0.1:8765"
-LOG_FILE    = INSTALL_DIR / "pms_api.log"
+LOG_FILE    = INSTALL_DIR / "pms_server.log"
 OLLAMA_EXE  = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe"
 
 
 # ── service control ───────────────────────────────────────────────────────────
 
 def svc_start():
-    print(f"Starting {APP_API} service…")
-    r = subprocess.run(["net", "start", APP_API], capture_output=True, text=True)
+    print(f"Starting {APP_SERVER} service…")
+    r = subprocess.run(["net", "start", APP_SERVER], capture_output=True, text=True)
     out = (r.stdout + r.stderr).strip()
     print(out if out else "Done.")
     return r.returncode == 0
 
 
 def svc_stop():
-    print(f"Stopping {APP_API} service…")
-    r = subprocess.run(["net", "stop", APP_API], capture_output=True, text=True)
+    print(f"Stopping {APP_SERVER} service…")
+    r = subprocess.run(["net", "stop", APP_SERVER], capture_output=True, text=True)
     out = (r.stdout + r.stderr).strip()
     print(out if out else "Done.")
     return r.returncode == 0
@@ -58,7 +58,7 @@ def svc_restart():
 def svc_state():
     """Return 'running', 'stopped', or 'unknown'."""
     r = subprocess.run(
-        ["sc", "query", APP_API],
+        ["sc", "query", APP_SERVER],
         capture_output=True, text=True
     )
     text = r.stdout.lower()
@@ -197,10 +197,10 @@ HELP = f"""\
 Usage: {APP_MANAGER} <command> [options]
 
 Commands:
-  start                   Start the PMS API Windows service
-  stop                    Stop the PMS API Windows service
-  restart                 Restart the PMS API Windows service
-  status                  Show service state and API health
+  start                   Start the PMS server Windows service
+  stop                    Stop the PMS server Windows service
+  restart                 Restart the PMS server Windows service
+  status                  Show service state and server health
   consolidate [stm|mtm]   Trigger AI consolidation (default: stm)
   log [n]                 Print last n log lines (default: 50)
   ollama-start            Start Ollama in the background (ollama serve)

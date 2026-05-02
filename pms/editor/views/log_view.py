@@ -1,4 +1,4 @@
-"""Log view — tail of pms_api.log with auto-refresh and level filter."""
+"""Log view — tail of pms_server.log with auto-refresh and level filter."""
 from __future__ import annotations
 
 import os
@@ -10,7 +10,7 @@ import customtkinter as ctk
 
 from . import ViewBase
 
-_DEFAULT_LOG = "pms_api.log"
+_DEFAULT_LOG = "pms_server.log"
 _TAIL_LINES  = 300
 _REFRESH_MS  = 2000
 

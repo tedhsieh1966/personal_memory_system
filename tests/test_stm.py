@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from pms.api.services import stm
+from pms.service import stm
 
 
 def _insert(content="hello world testing", source="manual"):
@@ -84,7 +84,7 @@ class TestTTL:
     def test_delete_expired_removes_old_events(self, monkeypatch):
         eid = _insert("expiring event")
         # Manually set expires_at to the past
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         with conn:
             conn.execute("UPDATE stm_events SET expires_at = ? WHERE id = ?", (time.time() - 1, eid))

@@ -7,14 +7,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pms.api.services import consolidator, mtm, stm
+from pms.service import consolidator, mtm, stm
 
 
 def _stm_event(content="sample content", age_hours=7, source="manual"):
     """Insert an STM event backdated by age_hours."""
     eid = stm.insert(source, content, None, None)
     past = time.time() - age_hours * 3600
-    from pms.api.db import get_conn
+    from pms.service.db import get_conn
     conn = get_conn()
     with conn:
         conn.execute(
@@ -26,7 +26,7 @@ def _stm_event(content="sample content", age_hours=7, source="manual"):
 
 def _mtm_episode(summary="Test episode", score=8.0, access=2):
     eid = mtm.insert(summary, ["test"], score, [1])
-    from pms.api.db import get_conn
+    from pms.service.db import get_conn
     conn = get_conn()
     with conn:
         conn.execute(
@@ -38,7 +38,7 @@ def _mtm_episode(summary="Test episode", score=8.0, access=2):
 class TestMaintenance:
     def test_deletes_expired_stm(self):
         eid = stm.insert("manual", "will expire", None, None)
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         with conn:
             conn.execute("UPDATE stm_events SET expires_at=? WHERE id=?", (time.time() - 1, eid))
@@ -48,7 +48,7 @@ class TestMaintenance:
 
     def test_applies_mtm_decay(self):
         eid = _mtm_episode(score=5.0)
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         with conn:
             conn.execute(
@@ -135,13 +135,13 @@ class TestMTMtoLTM:
 
         with (
             patch.object(consolidator, "_chat", return_value=concepts_payload),
-            patch("pms.api.services.consolidator.embedder.embed", return_value=[1.0, 0.0, 0.0, 0.0]),
+            patch("pms.service.consolidator.embedder.embed", return_value=[1.0, 0.0, 0.0, 0.0]),
         ):
             result = consolidator.run_mtm_to_ltm()
 
         assert result["episodes_processed"] == 1
         assert result["concepts_created"] == 1
-        from pms.api.services import ltm
+        from pms.service import ltm
         assert ltm.count() == 1
 
     def test_ai_failure_returns_zeros(self):
@@ -155,7 +155,7 @@ class TestMTMtoLTM:
         concepts_payload = json.dumps(["Some concept here."])
         with (
             patch.object(consolidator, "_chat", return_value=concepts_payload),
-            patch("pms.api.services.consolidator.embedder.embed", return_value=None),
+            patch("pms.service.consolidator.embedder.embed", return_value=None),
         ):
             result = consolidator.run_mtm_to_ltm()
         assert result["concepts_created"] == 0
@@ -165,7 +165,7 @@ class TestMTMtoLTM:
         payload = json.dumps(["Valid concept.", None, 42, ""])
         with (
             patch.object(consolidator, "_chat", return_value=payload),
-            patch("pms.api.services.consolidator.embedder.embed", return_value=[1.0, 0.0, 0.0, 0.0]),
+            patch("pms.service.consolidator.embedder.embed", return_value=[1.0, 0.0, 0.0, 0.0]),
         ):
             result = consolidator.run_mtm_to_ltm()
         assert result["concepts_created"] == 1  # only the valid string

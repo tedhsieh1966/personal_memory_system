@@ -4,10 +4,11 @@ import asyncio
 
 from fastapi import APIRouter, HTTPException, Query
 
+from pms.service import ltm as ltm_svc
+from pms.service import mtm as mtm_svc
+from pms.service import stm as stm_svc
+
 from ..models import MTMPatch
-from ..services import ltm as ltm_svc
-from ..services import mtm as mtm_svc
-from ..services import stm as stm_svc
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 

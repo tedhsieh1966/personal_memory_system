@@ -1,4 +1,4 @@
-# build.py — PyInstaller builds for pms_api.exe and pms_editor.exe
+# build.py — PyInstaller builds for pms_server.exe and pms_editor.exe
 import os
 import shutil
 import platform
@@ -10,31 +10,31 @@ def _icon_arg() -> list[str]:
     return [f"--icon={FP_ICON}"] if os.path.exists(FP_ICON) else []
 
 
-def build_api() -> bool:
-    print(f"Building {APP_API_EXE}...")
+def build_server() -> bool:
+    print(f"Building {APP_SERVER_EXE}...")
     args = [
-        FP_API_ENTRY,
+        FP_SERVER_ENTRY,
         "--onefile",
         "--console",
-        f"--name={APP_API}",
+        f"--name={APP_SERVER}",
         f"--add-data={FP_CONFIG}{SEPARATOR}.",
         "--hidden-import=uvicorn.lifespan.on",
         "--hidden-import=uvicorn.protocols.http.auto",
         "--hidden-import=uvicorn.protocols.websockets.auto",
         "--hidden-import=uvicorn.loops.auto",
-        "--hidden-import=pms.api.main",
-        "--hidden-import=pms.api.routers.ingest",
-        "--hidden-import=pms.api.routers.retrieve",
-        "--hidden-import=pms.api.routers.memory",
-        "--hidden-import=pms.api.routers.admin",
-        "--hidden-import=pms.api.services.stm",
-        "--hidden-import=pms.api.services.mtm",
-        "--hidden-import=pms.api.services.ltm",
-        "--hidden-import=pms.api.services.embedder",
-        "--hidden-import=pms.api.services.consolidator",
-        "--hidden-import=pms.api.services.scheduler",
-        "--hidden-import=pms.api.services.browser_poller",
-        "--hidden-import=pms.api.services.file_watcher",
+        "--hidden-import=pms.server.main",
+        "--hidden-import=pms.server.routers.ingest",
+        "--hidden-import=pms.server.routers.retrieve",
+        "--hidden-import=pms.server.routers.memory",
+        "--hidden-import=pms.server.routers.admin",
+        "--hidden-import=pms.service.stm",
+        "--hidden-import=pms.service.mtm",
+        "--hidden-import=pms.service.ltm",
+        "--hidden-import=pms.service.embedder",
+        "--hidden-import=pms.service.consolidator",
+        "--hidden-import=pms.service.scheduler",
+        "--hidden-import=pms.service.browser_poller",
+        "--hidden-import=pms.service.file_watcher",
         "--hidden-import=apscheduler.schedulers.asyncio",
         "--hidden-import=apscheduler.triggers.cron",
         "--hidden-import=apscheduler.triggers.interval",
@@ -50,10 +50,10 @@ def build_api() -> bool:
     ] + _icon_arg()
     try:
         PyInstaller.__main__.run(args)
-        print(f"  -> dist/{APP_API_EXE}")
+        print(f"  -> dist/{APP_SERVER_EXE}")
         return True
     except Exception as e:
-        print(f"API build failed: {e}")
+        print(f"Server build failed: {e}")
         return False
 
 
@@ -121,10 +121,10 @@ def build() -> bool:
             except PermissionError:
                 print(f"Warning: could not clean {d} (in use) — reusing existing directory.")
 
-    ok_api     = build_api()
+    ok_server  = build_server()
     ok_editor  = build_editor()
     ok_manager = build_manager()
-    return ok_api and ok_editor and ok_manager
+    return ok_server and ok_editor and ok_manager
 
 
 if __name__ == "__main__":

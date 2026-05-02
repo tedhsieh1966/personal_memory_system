@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from pms.api.services import scheduler
+from pms.service import scheduler
 
 
 class TestRunAndLog:
@@ -28,7 +28,7 @@ class TestRunAndLog:
         before = time.time()
         scheduler.run_and_log("ts_task", lambda: {})
         after = time.time()
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         row = conn.execute(
             "SELECT started_at, finished_at FROM scheduler_log WHERE task='ts_task'"

@@ -8,7 +8,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from ..config import get_config
+from .config import get_config
 from . import stm
 
 logger = logging.getLogger(__name__)

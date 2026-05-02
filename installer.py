@@ -42,7 +42,7 @@ class PMS_Installer:
     # ── helpers ──────────────────────────────────────────────────────────────
 
     def _check_installed(self):
-        return INSTALL_DIR.exists() and (INSTALL_DIR / APP_API_EXE).exists()
+        return INSTALL_DIR.exists() and (INSTALL_DIR / APP_SERVER_EXE).exists()
 
     def _is_admin(self):
         try:
@@ -207,7 +207,7 @@ class PMS_Installer:
 
             # 2. copy executables
             self._set_status("Copying files…", 20)
-            for fname in [APP_API_EXE, APP_EDITOR_EXE, APP_MANAGER_EXE]:
+            for fname in [APP_SERVER_EXE, APP_EDITOR_EXE, APP_MANAGER_EXE]:
                 s = src / fname
                 if s.exists():
                     shutil.copy2(s, INSTALL_DIR / fname)
@@ -244,8 +244,8 @@ class PMS_Installer:
             messagebox.showinfo(
                 "Installation Complete",
                 f"{BRIEF} has been installed to:\n{INSTALL_DIR}\n\n"
-                + ("The API service is running on http://127.0.0.1:8765" if svc_ok
-                   else "Start pms_api.exe manually (NSSM service not installed).")
+                + ("The PMS server is running on http://127.0.0.1:8765" if svc_ok
+                   else "Start pms_server.exe manually (NSSM service not installed).")
             )
 
             if self.launch_var.get():
@@ -257,21 +257,27 @@ class PMS_Installer:
             messagebox.showerror("Installation Error", str(e))
             self._set_status("Installation failed.", 0)
 
+    _LEGACY_SERVICE_NAME = "pms_api"  # pre-rename service name; uninstall on upgrade
+
     def _install_service(self):
         nssm = self._find_or_install_nssm()
         if not nssm:
             return False
-        api_exe = str(INSTALL_DIR / APP_API_EXE)
-        svc = APP_API
+        server_exe = str(INSTALL_DIR / APP_SERVER_EXE)
+        svc = APP_SERVER
         try:
+            # Migration: remove the legacy pms_api service if it exists from a prior install.
+            subprocess.run(["net", "stop", self._LEGACY_SERVICE_NAME],          capture_output=True)
+            subprocess.run([nssm, "remove", self._LEGACY_SERVICE_NAME, "confirm"], capture_output=True)
+
             subprocess.run([nssm, "stop",    svc],                    capture_output=True)
             subprocess.run([nssm, "remove",  svc, "confirm"],         capture_output=True)
-            subprocess.run([nssm, "install", svc, api_exe],           check=True, capture_output=True)
+            subprocess.run([nssm, "install", svc, server_exe],        check=True, capture_output=True)
             subprocess.run([nssm, "set", svc, "AppDirectory",  str(INSTALL_DIR)],           check=True, capture_output=True)
             subprocess.run([nssm, "set", svc, "Description",   BRIEF],                      check=True, capture_output=True)
             subprocess.run([nssm, "set", svc, "Start",         "SERVICE_AUTO_START"],        check=True, capture_output=True)
-            subprocess.run([nssm, "set", svc, "AppStdout",     str(INSTALL_DIR/"pms_api.log")],     check=True, capture_output=True)
-            subprocess.run([nssm, "set", svc, "AppStderr",     str(INSTALL_DIR/"pms_api_err.log")], check=True, capture_output=True)
+            subprocess.run([nssm, "set", svc, "AppStdout",     str(INSTALL_DIR/"pms_server.log")],     check=True, capture_output=True)
+            subprocess.run([nssm, "set", svc, "AppStderr",     str(INSTALL_DIR/"pms_server_err.log")], check=True, capture_output=True)
             subprocess.run(["net", "start",  svc],                    check=True, capture_output=True)
             return True
         except subprocess.CalledProcessError:
@@ -338,8 +344,9 @@ class PMS_Installer:
         nssm = shutil.which("nssm") or str(INSTALL_DIR / "nssm.exe")
         if not Path(nssm).exists():
             return
-        subprocess.run(["net",  "stop",   APP_API],            capture_output=True)
-        subprocess.run([nssm,   "remove", APP_API, "confirm"], capture_output=True)
+        for svc in (APP_SERVER, self._LEGACY_SERVICE_NAME):
+            subprocess.run(["net",  "stop",   svc],            capture_output=True)
+            subprocess.run([nssm,   "remove", svc, "confirm"], capture_output=True)
 
     # ── run ───────────────────────────────────────────────────────────────────
 

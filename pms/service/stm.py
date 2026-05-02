@@ -6,8 +6,8 @@ import time
 from datetime import datetime
 from typing import Any
 
-from ..config import get_config
-from ..db import get_conn
+from .config import get_config
+from .db import get_conn
 
 
 def _now() -> float:

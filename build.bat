@@ -25,7 +25,7 @@ echo.
 echo [3/3] Done.
 echo.
 echo Output:
-echo   dist\pms_api.exe        -- API server (bundled inside installer)
+echo   dist\pms_server.exe     -- HTTP server (bundled inside installer)
 echo   dist\pms_editor.exe     -- desktop editor (bundled inside installer)
 echo   dist\pms_manager.exe    -- CLI service manager (bundled inside installer)
 echo   dist\pms_installer.exe  -- run this on the target machine to install PMS

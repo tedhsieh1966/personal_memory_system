@@ -6,13 +6,14 @@ import copy
 import yaml
 from fastapi import APIRouter
 
-from ..config import get_config, get_config_path, load_config
+from pms.service.config import get_config, get_config_path, load_config
+from pms.service import consolidator
+from pms.service import ltm as ltm_svc
+from pms.service import mtm as mtm_svc
+from pms.service import scheduler as sched_svc
+from pms.service import stm as stm_svc
+
 from ..models import ConfigUpdate, StatusResponse
-from ..services import consolidator
-from ..services import ltm as ltm_svc
-from ..services import mtm as mtm_svc
-from ..services import scheduler as sched_svc
-from ..services import stm as stm_svc
 
 router = APIRouter(tags=["admin"])
 

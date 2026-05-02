@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from pms.api.services import file_watcher
-from pms.api.services.file_watcher import _PMSHandler, read_snippet
+from pms.service import file_watcher
+from pms.service.file_watcher import _PMSHandler, read_snippet
 
 
 # ── read_snippet ──────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ def test_handler_ignores_directory_event(tmp_path):
         is_directory = True
         src_path = str(tmp_path)
 
-    with patch("pms.api.services.file_watcher.stm") as mock_stm:
+    with patch("pms.service.file_watcher.stm") as mock_stm:
         from watchdog.events import FileCreatedEvent
         evt = FileCreatedEvent(str(tmp_path))
         # is_directory is False for FileCreatedEvent; manually override to test guard
@@ -71,7 +71,7 @@ def test_handler_ingests_file(tmp_path):
 
     file_watcher._last_ingest.clear()
 
-    with patch("pms.api.services.file_watcher.stm") as mock_stm:
+    with patch("pms.service.file_watcher.stm") as mock_stm:
         from watchdog.events import FileCreatedEvent
         handler.dispatch(FileCreatedEvent(str(f)))
         mock_stm.insert.assert_called_once()
@@ -87,7 +87,7 @@ def test_handler_extension_filter(tmp_path):
 
     file_watcher._last_ingest.clear()
 
-    with patch("pms.api.services.file_watcher.stm") as mock_stm:
+    with patch("pms.service.file_watcher.stm") as mock_stm:
         from watchdog.events import FileCreatedEvent
         handler.dispatch(FileCreatedEvent(str(f)))
         mock_stm.insert.assert_not_called()
@@ -100,7 +100,7 @@ def test_handler_debounce(tmp_path):
 
     file_watcher._last_ingest.clear()
 
-    with patch("pms.api.services.file_watcher.stm") as mock_stm:
+    with patch("pms.service.file_watcher.stm") as mock_stm:
         from watchdog.events import FileModifiedEvent
         handler.dispatch(FileModifiedEvent(str(f)))
         handler.dispatch(FileModifiedEvent(str(f)))   # within debounce window
@@ -116,7 +116,7 @@ def test_start_no_watched_dirs(isolated_env):
 
 
 def test_start_nonexistent_dir(isolated_env, tmp_path, monkeypatch):
-    from pms.api.config import get_config
+    from pms.service.config import get_config
     cfg = get_config()
     cfg["ingestion"]["watched_dirs"] = [str(tmp_path / "no_such_dir")]
     cfg["ingestion"]["watched_extensions"] = [".txt"]
@@ -136,7 +136,7 @@ def test_stop_when_not_started(isolated_env):
 
 
 def test_start_and_stop(isolated_env, tmp_path, monkeypatch):
-    from pms.api.config import get_config
+    from pms.service.config import get_config
     cfg = get_config()
     cfg["ingestion"]["watched_dirs"] = [str(tmp_path)]
     cfg["ingestion"]["watched_extensions"] = []

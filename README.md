@@ -56,7 +56,7 @@ ollama pull nomic-embed-text
 
 Start the API:
 ```bat
-.venv\Scripts\python.exe run_api.py
+.venv\Scripts\python.exe run_server.py
 ```
 
 Launch the editor:
@@ -106,13 +106,14 @@ See [docs/skill.md](docs/skill.md) for the full integration guide including requ
 ```
 PersonalMemory/
 ├── pms/
-│   ├── api/          # FastAPI service (STM/MTM/LTM, consolidation, ingestion)
+│   ├── service/      # Pure logic: STM/MTM/LTM, consolidation, ingestion
+│   ├── server/       # FastAPI HTTP layer
 │   ├── editor/       # CustomTkinter desktop GUI
 │   └── mcp/          # MCP stdio server
 ├── tests/            # 110 tests, no Ollama required
 ├── docs/skill.md          # Integration descriptor
 ├── docs/USER_MANUAL.md    # Full user manual
-├── run_api.py        # Start the API server
+├── run_server.py        # Start the API server
 ├── run_editor.py     # Launch the desktop editor
 ├── run_mcp.py        # Start the MCP server
 ├── build.bat         # Build distributable exes + deploy package

@@ -5,9 +5,10 @@ from datetime import timezone
 
 from fastapi import APIRouter
 
-from ..config import get_config
+from pms.service.config import get_config
+from pms.service import stm as stm_svc
+
 from ..models import IngestRequest
-from ..services import stm as stm_svc
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -45,7 +46,7 @@ async def _maybe_consolidate() -> None:
     current = await asyncio.to_thread(stm_svc.count)
 
     if current >= capacity * pct:
-        from ..services import consolidator, scheduler
+        from pms.service import consolidator, scheduler
         _consolidation_task = asyncio.create_task(
             asyncio.to_thread(scheduler.run_and_log, "stm_to_mtm", consolidator.run_stm_to_mtm)
         )

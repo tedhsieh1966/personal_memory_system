@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from .config import get_config, load_config
-from .db import get_conn
+from pms.service.config import get_config, load_config
+from pms.service.db import get_conn
+from pms.service import file_watcher as fw_svc
+from pms.service import ltm as ltm_svc
+from pms.service import scheduler as sched_svc
+
 from .routers import admin, ingest, memory, retrieve
-from .services import file_watcher as fw_svc
-from .services import ltm as ltm_svc
-from .services import scheduler as sched_svc
 
 
 @asynccontextmanager
@@ -42,7 +43,7 @@ if __name__ == "__main__":
     load_config()
     cfg = get_config()
     uvicorn.run(
-        "pms.api.main:app",
+        "pms.server.main:app",
         host=cfg["api"]["host"],
         port=cfg["api"]["port"],
         reload=False,

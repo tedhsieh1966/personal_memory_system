@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pms.api.services import browser_poller
+from pms.service import browser_poller
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -55,8 +55,8 @@ def test_poll_once_chrome(isolated_env, tmp_path):
 
     inserted = []
 
-    with patch("pms.api.services.browser_poller.stm") as mock_stm, \
-         patch("pms.api.services.browser_poller.get_config") as mock_cfg:
+    with patch("pms.service.browser_poller.stm") as mock_stm, \
+         patch("pms.service.browser_poller.get_config") as mock_cfg:
         mock_cfg.return_value = {
             "ingestion": {
                 "browser_db_paths": {"chrome": str(db)},
@@ -84,8 +84,8 @@ def test_poll_chrome_deduplication(isolated_env, tmp_path):
         }
     }
 
-    with patch("pms.api.services.browser_poller.stm"), \
-         patch("pms.api.services.browser_poller.get_config", return_value=cfg):
+    with patch("pms.service.browser_poller.stm"), \
+         patch("pms.service.browser_poller.get_config", return_value=cfg):
         browser_poller.poll_once()
         result2 = browser_poller.poll_once()
 
@@ -101,8 +101,8 @@ def test_poll_once_firefox(isolated_env, tmp_path):
 
     inserted = []
 
-    with patch("pms.api.services.browser_poller.stm") as mock_stm, \
-         patch("pms.api.services.browser_poller.get_config") as mock_cfg:
+    with patch("pms.service.browser_poller.stm") as mock_stm, \
+         patch("pms.service.browser_poller.get_config") as mock_cfg:
         mock_cfg.return_value = {
             "ingestion": {
                 "browser_db_paths": {"firefox": str(tmp_path / "profiles")},
@@ -124,7 +124,7 @@ def test_poll_chrome_missing_db(isolated_env, tmp_path):
             "browser_poll_interval_min": 30,
         }
     }
-    with patch("pms.api.services.browser_poller.get_config", return_value=cfg):
+    with patch("pms.service.browser_poller.get_config", return_value=cfg):
         result = browser_poller.poll_once()
     assert result.get("chrome", 0) == 0
 
@@ -139,7 +139,7 @@ def test_poll_firefox_no_profiles(isolated_env, tmp_path):
             "browser_poll_interval_min": 30,
         }
     }
-    with patch("pms.api.services.browser_poller.get_config", return_value=cfg):
+    with patch("pms.service.browser_poller.get_config", return_value=cfg):
         result = browser_poller.poll_once()
     assert result.get("firefox", 0) == 0
 
@@ -160,8 +160,8 @@ def test_chrome_epoch_conversion(isolated_env, tmp_path):
 
     captured_meta = []
 
-    with patch("pms.api.services.browser_poller.stm") as mock_stm, \
-         patch("pms.api.services.browser_poller.get_config") as mock_cfg:
+    with patch("pms.service.browser_poller.stm") as mock_stm, \
+         patch("pms.service.browser_poller.get_config") as mock_cfg:
         mock_cfg.return_value = {
             "ingestion": {
                 "browser_db_paths": {"chrome": str(db)},

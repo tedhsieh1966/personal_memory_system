@@ -11,7 +11,7 @@ try:
 except ImportError:
     _LANCEDB_AVAILABLE = False
 
-from ..config import get_config
+from .config import get_config
 
 _db = None
 _table = None

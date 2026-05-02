@@ -111,7 +111,7 @@ async def call_tool(
     except httpx.ConnectError:
         return [types.TextContent(
             type="text",
-            text="PMS API is not reachable. Make sure pms_api is running on "
+            text="PMS API is not reachable. Make sure pms_server is running on "
                  f"{os.environ.get('PMS_URL', _DEFAULT_BASE_URL)}.",
         )]
     except Exception as exc:

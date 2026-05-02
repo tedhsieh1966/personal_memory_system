@@ -6,7 +6,7 @@ import re
 import time
 from typing import Any
 
-from ..db import get_conn
+from .db import get_conn
 
 
 def _now() -> float:
@@ -19,7 +19,7 @@ def insert(
     importance_score: float,
     source_ids: list[int],
 ) -> int:
-    from ..config import get_config
+    from .config import get_config
     cfg = get_config()
     ttl_days: int = cfg["memory"]["mtm_ttl_days"]
 
@@ -120,7 +120,7 @@ def count() -> int:
 
 def apply_decay() -> int:
     """Apply Ebbinghaus decay to all non-pinned episodes; delete those below threshold."""
-    from ..config import get_config
+    from .config import get_config
     cfg = get_config()
     lam: float = cfg["memory"]["mtm_decay_lambda"]
     threshold: float = cfg["memory"]["mtm_score_threshold"]

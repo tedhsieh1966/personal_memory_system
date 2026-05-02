@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..config import get_config
+from .config import get_config
 
 _st_model = None
 

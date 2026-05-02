@@ -1,4 +1,4 @@
-# build_installer.py — bundles pms_api.exe + pms_editor.exe + config.yaml into pms_installer.exe
+# build_installer.py — bundles pms_server.exe + pms_editor.exe + config.yaml into pms_installer.exe
 import os
 import sys
 import platform
@@ -15,11 +15,11 @@ def build_installer():
         print("PMS installer can only be built on Windows.")
         return False
 
-    api_exe     = os.path.join(ROOT_DIR, DIR_DIST, APP_API_EXE)
+    server_exe  = os.path.join(ROOT_DIR, DIR_DIST, APP_SERVER_EXE)
     editor_exe  = os.path.join(ROOT_DIR, DIR_DIST, APP_EDITOR_EXE)
     manager_exe = os.path.join(ROOT_DIR, DIR_DIST, APP_MANAGER_EXE)
 
-    for path, name in [(api_exe, APP_API_EXE), (editor_exe, APP_EDITOR_EXE), (manager_exe, APP_MANAGER_EXE)]:
+    for path, name in [(server_exe, APP_SERVER_EXE), (editor_exe, APP_EDITOR_EXE), (manager_exe, APP_MANAGER_EXE)]:
         if not os.path.exists(path):
             print(f"Error: {name} not found in dist/. Run build.py first.")
             return False
@@ -31,7 +31,7 @@ def build_installer():
         "--onefile",
         "--windowed",
         f"--name={APP_INSTALLER}",
-        f"--add-data={api_exe}{SEPARATOR}.",
+        f"--add-data={server_exe}{SEPARATOR}.",
         f"--add-data={editor_exe}{SEPARATOR}.",
         f"--add-data={manager_exe}{SEPARATOR}.",
         f"--add-data={FP_CONFIG}{SEPARATOR}.",

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from pms.api.services import ltm
+from pms.service import ltm
 
 DIM = 4  # matches conftest dim=4
 

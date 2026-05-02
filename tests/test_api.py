@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client():
     """Create a fresh TestClient for each test, bypassing the scheduler."""
-    from pms.api.main import app
-    with patch("pms.api.services.scheduler.start"), patch("pms.api.services.scheduler.stop"):
+    from pms.server.main import app
+    with patch("pms.service.scheduler.start"), patch("pms.service.scheduler.stop"):
         with TestClient(app) as c:
             yield c
 
@@ -133,7 +133,7 @@ class TestAdmin:
     def test_consolidate_stm_with_old_events(self, client):
         client.post("/ingest", json={"source": "manual", "content": "old event to consolidate"})
         # Backdate the event
-        from pms.api.db import get_conn
+        from pms.service.db import get_conn
         conn = get_conn()
         past = time.time() - 8 * 3600
         with conn:
@@ -144,7 +144,7 @@ class TestAdmin:
             "topic_tags": ["memory", "python"],
             "importance_score": 7,
         })
-        with patch("pms.api.services.consolidator._chat", return_value=ai_payload):
+        with patch("pms.service.consolidator._chat", return_value=ai_payload):
             resp = client.post("/consolidate/stm")
 
         assert resp.status_code == 200

@@ -11,7 +11,7 @@ VERSION     = "0.6.0"
 AUTHOR      = "Ted Hsieh"
 EMAIL       = "ted1966@gmail.com"
 
-APP_API         = APP + "_api"
+APP_SERVER      = APP + "_server"
 APP_EDITOR      = APP + "_editor"
 APP_INSTALLER   = APP + "_installer"
 APP_MANAGER     = APP + "_manager"
@@ -22,20 +22,20 @@ DIR_BUILD   = "build"
 system = platform.system()
 if system == "Windows":
     SEPARATOR           = ";"
-    APP_API_EXE         = APP_API + ".exe"
+    APP_SERVER_EXE      = APP_SERVER + ".exe"
     APP_EDITOR_EXE      = APP_EDITOR + ".exe"
     APP_INSTALLER_EXE   = APP_INSTALLER + ".exe"
     APP_MANAGER_EXE     = APP_MANAGER + ".exe"
 else:
     SEPARATOR           = ":"
-    APP_API_EXE         = APP_API
+    APP_SERVER_EXE      = APP_SERVER
     APP_EDITOR_EXE      = APP_EDITOR
     APP_INSTALLER_EXE   = APP_INSTALLER
     APP_MANAGER_EXE     = APP_MANAGER
 
 APP_DESKTOP_LINK = APP_CAPS + " Editor.lnk"
 
-FP_API_ENTRY        = f"{ROOT_DIR}/run_api.py"
+FP_SERVER_ENTRY     = f"{ROOT_DIR}/run_server.py"
 FP_EDITOR_ENTRY     = f"{ROOT_DIR}/run_editor.py"
 FP_MCP_ENTRY        = f"{ROOT_DIR}/run_mcp.py"
 FP_INSTALLER_ENTRY  = f"{ROOT_DIR}/installer.py"
