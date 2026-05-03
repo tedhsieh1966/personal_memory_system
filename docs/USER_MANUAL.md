@@ -134,9 +134,9 @@ Download `pms_installer.exe` from the releases page.
 
 ### Before running the installer
 
-**NSSM** (optional, for Windows service): Download from [nssm.cc](https://nssm.cc/download), unzip, and add to your `PATH`. Without NSSM, the installer still copies the application files but cannot install the auto-start service — you can start `pms_server.exe` manually instead.
+**Ollama** (optional, for AI features): Download from [ollama.com](https://ollama.com). The installer can pull the required models for you during installation. PMS works without Ollama — retrieval falls back to keyword search only.
 
-**Ollama** (optional, for AI features): Download from [ollama.com](https://ollama.com). The installer can pull the required models for you during installation.
+> **NSSM is bundled.** The installer ships with NSSM — no separate download needed.
 
 ### Run the installer
 
@@ -147,17 +147,19 @@ The installer window shows three options, all checked by default:
 | Option | Effect |
 |---|---|
 | Create desktop shortcut for PMS Editor | Adds a shortcut to your Desktop |
-| Pull Ollama models (qwen2.5:7b, nomic-embed-text) | Downloads the AI and embedding models (~5 GB) |
+| Set up Ollama and pull models (qwen2.5:7b, nomic-embed-text) | Downloads the AI and embedding models (~5 GB) |
 | Launch editor after install | Opens the editor immediately when done |
+
+The installer language is auto-detected from your system input method (English / 繁體中文 / 簡体中文).
 
 Click **Install**. The installer will:
 
-1. Copy `pms_server.exe`, `pms_editor.exe`, `pms_manager.exe`, and `config.yaml` to `%APPDATA%\pms`
-2. Install and start the `pms_server` Windows service (set to auto-start at every boot)
-3. Pull Ollama models if selected
-4. Create a desktop shortcut if selected
-
-If NSSM is not found on `PATH`, a warning is shown — the files are still installed but you must start the API manually (see [Section 5](#5-running-the-api-server)).
+1. Stop and unregister any previous `pms_server` or `pms_api` service
+2. Copy `pms_server.exe`, `pms_editor.exe`, `pms_manager.exe`, and `config.yaml` to `%APPDATA%\pms`
+3. Add `%APPDATA%\pms` to your user `PATH` so `pms_manager` is available in any new terminal
+4. Install and start the `pms_server` Windows service (auto-starts at every boot)
+5. Pull Ollama models if selected
+6. Create a desktop shortcut if selected
 
 ### After installation
 
@@ -295,10 +297,10 @@ pms_manager ollama-stop
 pms_manager ollama-start
 ```
 
-To run `pms_manager` from anywhere, add `%APPDATA%\pms` to your `PATH`, or use the full path:
+`%APPDATA%\pms` is added to your user `PATH` automatically during installation. Open a new terminal after installing and `pms_manager` is available directly:
 
 ```bat
-"%APPDATA%\pms\pms_manager.exe" status
+pms_manager status
 ```
 
 ---
@@ -360,6 +362,16 @@ Click **Save Settings** to write changes. Click **Refresh** to reload the curren
 ### Log
 
 The Log view tails `pms_server.log` (or any log file you point it at). Use the **Filter** dropdown to show only INFO, WARNING, ERROR, or DEBUG lines. Toggle **Auto-refresh** to update the view every 2 seconds automatically.
+
+### Language
+
+The editor UI is available in **English**, **繁體中文**, and **簡体中文**. The language is auto-detected from your Windows input method at startup. To change it manually:
+
+1. Go to **Settings**
+2. Under **Appearance**, choose a language from the **Language** dropdown
+3. Restart the editor to apply the change
+
+Your preference is saved in `%APPDATA%\pms\editor_prefs.json`.
 
 ---
 
@@ -457,33 +469,29 @@ This runs PyInstaller twice and then assembles a deployment package:
 
 ## 13. Installing as a Windows Service
 
-Running PMS as a Windows service means it starts automatically at boot and runs in the background without a visible window.
+`pms_installer.exe` handles the full service lifecycle automatically — no manual NSSM setup is required.
 
-### Requirements
+### Auto-start at boot
 
-Download [NSSM (Non-Sucking Service Manager)](https://nssm.cc/download), unzip it, and add the folder to your `PATH`.
+When `pms_installer.exe` runs successfully, `pms_server` is registered as a Windows service set to **SERVICE_AUTO_START**. It starts before any user logs in and restarts automatically if the process crashes. No further action is required.
 
-### Steps
-
-1. Copy `dist/deploy/` to the target machine (e.g. `C:\PMS\`)
-2. Edit `config.yaml` — set your browser paths, watched directories, and AI backend
-3. Open a Command Prompt **as Administrator** and run:
+To confirm the service is running after a reboot:
 
 ```bat
-install_service.bat
+pms_manager status
 ```
-
-The service installs, starts immediately, and is set to start automatically at every boot. It listens on `http://127.0.0.1:8765`.
-
-4. Launch `pms_editor.exe` and click **Connect** to confirm it's working.
 
 ### Viewing service logs
 
-The service writes stdout to `pms_server.log` and stderr to `pms_server_err.log` in the same folder as the exe.
+The service writes stdout to `pms_server.log` and stderr to `pms_server_err.log`, both in `%APPDATA%\pms\`. The desktop editor's **Log** view tails `pms_server.log` automatically.
+
+### Reinstalling or upgrading
+
+Re-run `pms_installer.exe` as Administrator. It stops and removes the existing service before copying new files, so upgrades are clean.
 
 ### Uninstalling
 
-Run `uninstall_service.bat` as Administrator.
+Re-run `pms_installer.exe` as Administrator and click **Uninstall**. The service is stopped and removed, `%APPDATA%\pms` is removed from your PATH, and all files except `config.yaml` are deleted.
 
 ---
 
@@ -631,7 +639,7 @@ There may not be enough STM events to form a meaningful batch (minimum ~5 events
 
 ### The service installed but the API doesn't start
 
-Check `pms_server_err.log` in the deploy folder. Common causes: `config.yaml` has a syntax error, the port is already in use, or the exe path has a space and NSSM wasn't given a quoted path. Re-run `install_service.bat` as Administrator.
+Check `pms_server_err.log` in `%APPDATA%\pms\`. Common causes: `config.yaml` has a syntax error, or the port is already in use. Re-run `pms_installer.exe` as Administrator to reinstall the service cleanly.
 
 ### I want to reset everything and start fresh
 
@@ -776,9 +784,9 @@ ollama pull nomic-embed-text
 
 ### 執行安裝程式前
 
-**NSSM**（可選，用於 Windows 服務）：從 [nssm.cc](https://nssm.cc/download) 下載，解壓縮並加入 `PATH`。若沒有 NSSM，安裝程式仍會複製應用程式檔案，但無法安裝自動啟動服務——您可改為手動啟動 `pms_server.exe`。
+**Ollama**（可選，用於 AI 功能）：從 [ollama.com](https://ollama.com) 下載。安裝程式可在安裝過程中自動拉取所需模型。沒有 Ollama 也可以使用 PMS——搜尋將退回至關鍵字模式。
 
-**Ollama**（可選，用於 AI 功能）：從 [ollama.com](https://ollama.com) 下載。安裝程式可在安裝過程中自動拉取所需模型。
+> **NSSM 已內建。** 安裝程式已包含 NSSM，無需另行下載。
 
 ### 執行安裝程式
 
@@ -788,18 +796,20 @@ ollama pull nomic-embed-text
 
 | 選項 | 效果 |
 |---|---|
-| 為 PMS 編輯器建立桌面捷徑 | 在桌面新增捷徑 |
-| 拉取 Ollama 模型（qwen2.5:7b、nomic-embed-text） | 下載 AI 和嵌入模型（約 5 GB） |
-| 安裝完成後啟動編輯器 | 完成後立即開啟編輯器 |
+| 建立 PMS 編輯器桌面捷徑 | 在桌面新增捷徑 |
+| 設定 Ollama 並拉取模型（qwen2.5:7b、nomic-embed-text） | 下載 AI 和嵌入模型（約 5 GB） |
+| 安裝後啟動編輯器 | 完成後立即開啟編輯器 |
+
+安裝程式介面語言會自動偵測您的系統輸入法（English / 繁體中文 / 簡体中文）。
 
 點擊**安裝**。安裝程式將：
 
-1. 將 `pms_server.exe`、`pms_editor.exe`、`pms_manager.exe` 和 `config.yaml` 複製到 `%APPDATA%\pms`
-2. 安裝並啟動 `pms_server` Windows 服務（設定為每次開機自動啟動）
-3. 若已勾選，拉取 Ollama 模型
-4. 若已勾選，建立桌面捷徑
-
-若 `PATH` 中找不到 NSSM，將顯示警告——檔案仍會安裝，但需手動啟動 API（請參閱[第 5 節](#5-執行-api-伺服器)）。
+1. 停止並移除任何先前的 `pms_server` 或 `pms_api` 服務
+2. 將 `pms_server.exe`、`pms_editor.exe`、`pms_manager.exe` 和 `config.yaml` 複製到 `%APPDATA%\pms`
+3. 將 `%APPDATA%\pms` 加入您的使用者 `PATH`，使 `pms_manager` 可在任何新終端機中使用
+4. 安裝並啟動 `pms_server` Windows 服務（設定為每次開機自動啟動）
+5. 若已勾選，拉取 Ollama 模型
+6. 若已勾選，建立桌面捷徑
 
 ### 安裝完成後
 
@@ -937,10 +947,10 @@ pms_manager ollama-stop
 pms_manager ollama-start
 ```
 
-若要從任何位置執行 `pms_manager`，請將 `%APPDATA%\pms` 加入 `PATH`，或使用完整路徑：
+安裝程式會自動將 `%APPDATA%\pms` 加入您的使用者 `PATH`。安裝後開啟新終端機，即可直接執行 `pms_manager`：
 
 ```bat
-"%APPDATA%\pms\pms_manager.exe" status
+pms_manager status
 ```
 
 ---
@@ -1002,6 +1012,16 @@ LTM 視圖列出永久概念記錄。使用**搜尋欄**進行語義搜尋——
 ### 日誌
 
 日誌視圖追蹤 `pms_server.log`（或您指定的任何日誌檔案）。使用**篩選**下拉選單僅顯示 INFO、WARNING、ERROR 或 DEBUG 行。切換**自動重新整理**以每 2 秒自動更新視圖。
+
+### 語言
+
+編輯器介面支援 **English**、**繁體中文** 和 **簡体中文**，在啟動時自動偵測您的 Windows 輸入法語言。若要手動切換：
+
+1. 前往**設定**
+2. 在**外觀**區塊，從**語言**下拉選單選擇目標語言
+3. 重新啟動編輯器以套用變更
+
+您的偏好設定會儲存在 `%APPDATA%\pms\editor_prefs.json`。
 
 ---
 
@@ -1099,33 +1119,29 @@ build.bat
 
 ## 13. 安裝為 Windows 服務
 
-將 PMS 作為 Windows 服務執行意味著它在開機時自動啟動，在背景中運行而不顯示視窗。
+`pms_installer.exe` 自動處理完整的服務生命週期——無需手動設定 NSSM。
 
-### 需求
+### 開機自動啟動
 
-下載 [NSSM（Non-Sucking Service Manager）](https://nssm.cc/download)，解壓縮，並將資料夾加入您的 `PATH`。
+`pms_installer.exe` 成功執行後，`pms_server` 會被登錄為 **SERVICE_AUTO_START** 的 Windows 服務。它在任何使用者登入前即開始執行，若程序崩潰則自動重啟。無需其他操作。
 
-### 步驟
-
-1. 將 `dist/deploy/` 複製到目標機器（例如 `C:\PMS\`）
-2. 編輯 `config.yaml`——設定您的瀏覽器路徑、監控目錄和 AI 後端
-3. 以**系統管理員身份**開啟命令提示字元並執行：
+重新開機後確認服務正在執行：
 
 ```bat
-install_service.bat
+pms_manager status
 ```
-
-服務安裝完成後立即啟動，並設定為每次開機自動啟動。它監聽 `http://127.0.0.1:8765`。
-
-4. 開啟 `pms_editor.exe` 並點擊**連接**以確認其正常運作。
 
 ### 查看服務日誌
 
-服務將標準輸出寫入執行檔所在資料夾中的 `pms_server.log`，將標準錯誤寫入 `pms_server_err.log`。
+服務將標準輸出寫入 `%APPDATA%\pms\pms_server.log`，將標準錯誤寫入 `%APPDATA%\pms\pms_server_err.log`。桌面編輯器的**日誌**視圖會自動追蹤 `pms_server.log`。
+
+### 重新安裝或升級
+
+以系統管理員身份重新執行 `pms_installer.exe`。安裝程式在複製新檔案前會先停止並移除現有服務，升級過程乾淨無殘留。
 
 ### 解除安裝
 
-以系統管理員身份執行 `uninstall_service.bat`。
+以系統管理員身份重新執行 `pms_installer.exe`，點擊**解除安裝**。服務將被停止並移除，`%APPDATA%\pms` 從 PATH 中移除，所有檔案（`config.yaml` 除外）將被刪除。
 
 ---
 
@@ -1273,7 +1289,7 @@ API 伺服器未執行，或在不同的連接埠上執行。啟動 `run_server.
 
 ### 服務已安裝但 API 未啟動
 
-查看部署資料夾中的 `pms_server_err.log`。常見原因：`config.yaml` 有語法錯誤、連接埠已被使用，或執行檔路徑含有空格而 NSSM 未給出帶引號的路徑。以系統管理員身份重新執行 `install_service.bat`。
+查看 `%APPDATA%\pms\pms_server_err.log`。常見原因：`config.yaml` 有語法錯誤，或連接埠已被使用。以系統管理員身份重新執行 `pms_installer.exe` 以重新安裝服務。
 
 ### 我想重置所有內容並重新開始
 
